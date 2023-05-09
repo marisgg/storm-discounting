@@ -33,6 +33,10 @@ namespace storm {
             auto transitions = std::vector<std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>>(); // per state per action per succState, one probability // TODO rethink or convert to matrix rows after while loop
             auto observations = std::vector<uint32_t>();
 
+            // for the matrix
+            uint_fast64_t entryCount = 0;
+            uint_fast64_t choiceCount = 0;
+
             // prep
             std::queue<std::pair<uint_fast64_t, ValueType>> processingQ; // queue does BFS, if DFS is desired, change to stack
 
@@ -44,11 +48,13 @@ namespace storm {
             newStateToStateEpoch [0] = initEpochState;
             uint_fast64_t nextNewStateIndex = 1;
 
+
             while (!processingQ.empty()) {
                 auto currentEpochState = processingQ.pop();
                 uint_fast64_t rowGroupStart = ogMatrix.getRowGroupIndices()[currentEpochState.first];
                 uint_fast64_t rowGroupSize = ogMatrix.getRowGroupSize(currentEpochState.first);
                 for (auto row = rowGroupStart; row < rowGroupStart + rowGroupSize; row++) {
+                    choiceCount++;
                     auto actionIndex = row - rowGroupStart;
                     for (auto entry : ogMatrix.getRow(row)) {
                         uint_fast64_t oldSuccState = entry.getColumn();
@@ -69,10 +75,40 @@ namespace storm {
                         }
                         uint_fast64_t newSuccState = stateEpochToNewState[stateEpochSucc];
                         transitions[currentEpochState][actionIndex][newSuccState] = entry.getValue();
+                        entryCount++;
                     }
                 }
             }
-            // TODO observations
+            // TODO do we want the new states to be ordered a certain way?
+            for (uint_fast64_t i = 0; i < nextNewStateIndex; i++){
+                observations.push_back(originalPOMDP->getObservation(newStateToStateEpoch[i].first));
+            }
+
+            // lets get building (taken from beliefmdpexplorer + adapted)
+            storm::storage::SparseMatrixBuilder<ValueType> builder(choiceCount, nextNewStateIndex, entryCount, true, true, nextNewStateIndex);
+            uint_fast64_t nextGroupIndex = 0;
+            for (uint_fast64_t state = 0; state < transitions.size(); state++){
+                for (auto action = 0; action < transitions[state].size(); action++){
+                    for (auto const &entry : )
+                }
+            }
+            for (uint64_t groupIndex = 0; groupIndex < exploredChoiceIndices.size() - 1; ++groupIndex) {
+                uint64_t rowIndex = exploredChoiceIndices[groupIndex];
+                uint64_t groupEnd = exploredChoiceIndices[groupIndex + 1];
+                builder.newRowGroup(rowIndex);
+                for (; rowIndex < groupEnd; ++rowIndex) {
+                    for (auto const &entry : exploredMdpTransitions[rowIndex]) {
+                        if (stateRemapping.find(entry.first) == stateRemapping.end()) {
+                            builder.addNextValue(rowIndex, entry.first, entry.second);
+                        } else {
+                            builder.addNextValue(rowIndex, stateRemapping[entry.first], entry.second);
+                        }
+                    }
+                }
+            }
+            auto mdpTransitionMatrix = builder.build();
+
+
             return std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>();
         }
     }
