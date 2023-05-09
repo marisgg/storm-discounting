@@ -38,19 +38,31 @@ namespace storm {
             uint_fast64_t choiceCount = 0;
 
             // prep
-            std::queue<std::pair<uint_fast64_t, ValueType>> processingQ; // queue does BFS, if DFS is desired, change to stack
+            std::queue<std::pair<uint_fast64_t, ValueType>> processingQ; // queue does BFS, if DFS is desired, change to stac
 
+
+            // leave 0, 1 for special states
+            uint_fast64_t nextNewStateIndex = 2;
+
+            // special states: 0 is =), 1 is =(
+            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), 1));
+            transitions [0][0][0] = storm::utility::one<ValueType>();
+            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), 1));
+            transitions [1][0][1] = storm::utility::one<ValueType>();
+
+            // init state
             auto initEpochState = std::make_pair(initState, bound);
             processingQ.push(initEpochState);
             auto numberOfActions = originalPOMDP->getTransitionMatrix().getRowGroupSize(initState);
-            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(numberOfActions));
-            stateEpochToNewState[initEpochState] = 0;
-            newStateToStateEpoch [0] = initEpochState;
-            uint_fast64_t nextNewStateIndex = 1;
+            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), numberOfActions));
+            stateEpochToNewState[initEpochState] = nextNewStateIndex;
+            newStateToStateEpoch[nextNewStateIndex] = initEpochState;
+            nextNewStateIndex++;
 
 
             while (!processingQ.empty()) {
                 auto currentEpochState = processingQ.pop();
+                // TODO add transitions to special states from states with the goal observation
                 uint_fast64_t rowGroupStart = ogMatrix.getRowGroupIndices()[currentEpochState.first];
                 uint_fast64_t rowGroupSize = ogMatrix.getRowGroupSize(currentEpochState.first);
                 for (auto row = rowGroupStart; row < rowGroupStart + rowGroupSize; row++) {
@@ -69,7 +81,7 @@ namespace storm {
                             stateEpochToNewState[stateEpochSucc] = nextNewStateIndex;
                             newStateToStateEpoch[nextNewStateIndex] = stateEpochSucc;
                             numberOfActions = originalPOMDP->getTransitionMatrix().getRowGroupSize(oldSuccState);
-                            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(numberOfActions));
+                            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), numberOfActions));
                             processingQ.push(stateEpochSucc);
                             nextNewStateIndex++;
                         }
@@ -86,27 +98,17 @@ namespace storm {
 
             // lets get building (taken from beliefmdpexplorer + adapted)
             storm::storage::SparseMatrixBuilder<ValueType> builder(choiceCount, nextNewStateIndex, entryCount, true, true, nextNewStateIndex);
-            uint_fast64_t nextGroupIndex = 0;
+            uint_fast64_t nextMatrixRow = 0;
             for (uint_fast64_t state = 0; state < transitions.size(); state++){
+                builder.newRowGroup(nextMatrixRow);
                 for (auto action = 0; action < transitions[state].size(); action++){
-                    for (auto const &entry : )
-                }
-            }
-            for (uint64_t groupIndex = 0; groupIndex < exploredChoiceIndices.size() - 1; ++groupIndex) {
-                uint64_t rowIndex = exploredChoiceIndices[groupIndex];
-                uint64_t groupEnd = exploredChoiceIndices[groupIndex + 1];
-                builder.newRowGroup(rowIndex);
-                for (; rowIndex < groupEnd; ++rowIndex) {
-                    for (auto const &entry : exploredMdpTransitions[rowIndex]) {
-                        if (stateRemapping.find(entry.first) == stateRemapping.end()) {
-                            builder.addNextValue(rowIndex, entry.first, entry.second);
-                        } else {
-                            builder.addNextValue(rowIndex, stateRemapping[entry.first], entry.second);
-                        }
+                    for (auto const &entry : transitions[state][action]) {
+                        builder.addNextValue(nextMatrixRow, entry.first, entry.second);
+                        nextMatrixRow++;
                     }
                 }
             }
-            auto mdpTransitionMatrix = builder.build();
+            auto unfoldedTransitionMatrix = builder.build();
 
 
             return std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>();
