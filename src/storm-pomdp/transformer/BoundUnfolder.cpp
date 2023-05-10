@@ -11,53 +11,57 @@ namespace storm {
     namespace transformer {
         template<typename ValueType>
         std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> BoundUnfolder<ValueType>::unfold(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::QuantileFormula& formula) {
-            // check everything has the right format etc
+            // Check formula
             assert(!formula.isMultiDimensional());
-            STORM_LOG_THROW(formula.isProbabilityOperatorFormula() && formula.getSubformula().isBoundedUntilFormula(), storm::exceptions::NotSupportedException, "Unexpected formula type of formula " << formula);
+            STORM_LOG_THROW(formula.isProbabilityOperatorFormula() && formula.getSubformula().isBoundedUntilFormula() && formula.getSubformula().asBoundedUntilFormula().getLeftSubformula().isTrueFormula(), storm::exceptions::NotSupportedException, "Unexpected formula type of formula " << formula);
 
+            // Grab reward model
             auto temp = std::set<std::string>();
             formula.gatherReferencedRewardModels(temp);
             assert(temp.size() == 1);
             auto rewModel = originalPOMDP->getRewardModel(temp.begin());
             STORM_LOG_THROW(rewModel.hasStateActionRewards(), storm::exceptions::NotSupportedException, "Only state action rewards are currently supported.");
 
+            // Grab bound
             ValueType bound = formula.getSubformula().asBoundedUntilFormula().getUpperBound();
-            assert(originalPOMDP->getInitialStates().getNumberOfSetBits() == 1);
 
-            uint_fast64_t initState = originalPOMDP->getInitialStates().getNextSetIndex(0);
-            auto ogMatrix = originalPOMDP->getTransitionMatrix();
+            // Grab matrix (mostly for coding convenience to just have it in a variable here)
+            auto& ogMatrix = originalPOMDP->getTransitionMatrix();
 
-            // information we need to build the model (remove non-necessary ones later)
+            // Transformation information + variables (remove non-necessary ones later)
             auto stateEpochToNewState  = std::map<std::pair<uint_fast64_t, ValueType>, uint_fast64_t>();
             auto newStateToStateEpoch = std::map<uint_fast64_t, std::pair<uint_fast64_t, ValueType>>();
-            auto transitions = std::vector<std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>>(); // per state per action per succState, one probability // TODO rethink or convert to matrix rows after while loop
-            auto observations = std::vector<uint32_t>();
+            uint_fast64_t nextNewStateIndex = 2;
+            std::queue<std::pair<uint_fast64_t, ValueType>> processingQ; // queue does BFS, if DFS is desired, change to stack
 
-            // for the matrix
+            // Information for unfolded model
+            auto transitions = std::vector<std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>>();
+            auto observations = std::vector<uint32_t>();
             uint_fast64_t entryCount = 0;
             uint_fast64_t choiceCount = 0;
 
-            // prep
-            std::queue<std::pair<uint_fast64_t, ValueType>> processingQ; // queue does BFS, if DFS is desired, change to stac
-
-
-            // leave 0, 1 for special states
-            uint_fast64_t nextNewStateIndex = 2;
-
-            // special states: 0 is =), 1 is =(
+            // Special sink states: 0 is =), 1 is =(
             transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), 1));
             transitions [0][0][0] = storm::utility::one<ValueType>();
+            entryCount++;
+            choiceCount++;
             transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), 1));
             transitions [1][0][1] = storm::utility::one<ValueType>();
+            entryCount++;
+            choiceCount++;
 
-            // init state
+            // Create init state of unfolded model
+            assert(originalPOMDP->getInitialStates().getNumberOfSetBits() == 1);
+            uint_fast64_t initState = originalPOMDP->getInitialStates().getNextSetIndex(0);
             auto initEpochState = std::make_pair(initState, bound);
             processingQ.push(initEpochState);
-            auto numberOfActions = originalPOMDP->getTransitionMatrix().getRowGroupSize(initState);
+            auto numberOfActions = ogMatrix.getRowGroupSize(initState);
             transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), numberOfActions));
             stateEpochToNewState[initEpochState] = nextNewStateIndex;
             newStateToStateEpoch[nextNewStateIndex] = initEpochState;
             nextNewStateIndex++;
+            entryCount++;
+            choiceCount++;
 
 
             while (!processingQ.empty()) {
@@ -68,23 +72,31 @@ namespace storm {
                 for (auto row = rowGroupStart; row < rowGroupStart + rowGroupSize; row++) {
                     choiceCount++;
                     auto actionIndex = row - rowGroupStart;
+                    auto reward = rewModel.getStateActionReward(row);
                     for (auto entry : ogMatrix.getRow(row)) {
+                        // Calculate unfolded successor state
                         uint_fast64_t oldSuccState = entry.getColumn();
                         ValueType epoch;
-                        if (currentEpochState.second >= rewModel.getStateActionReward(row)) {
+                        if (currentEpochState.second >= reward) {
                             epoch = currentEpochState.second - rewModel.getStateActionReward(row);
                         } else {
-                            epoch = storm::utility::infinity<ValueType>(); // TODO does this even work for doubles? maybe come up with other denotation of bot
+                            epoch = storm::utility::infinity<ValueType>(); // TODO does this even work for doubles? maybe come up with other denotation of bottom
                         }
                         auto stateEpochSucc = std::make_pair(oldSuccState, epoch);
+                        // If unfolded successor does not exist yet, create it + add it to processing queue
                         if (stateEpochToNewState.find(stateEpochSucc) == stateEpochToNewState.end()){
                             stateEpochToNewState[stateEpochSucc] = nextNewStateIndex;
                             newStateToStateEpoch[nextNewStateIndex] = stateEpochSucc;
-                            numberOfActions = originalPOMDP->getTransitionMatrix().getRowGroupSize(oldSuccState);
+                            numberOfActions = ogMatrix.getRowGroupSize(oldSuccState);
                             transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), numberOfActions));
-                            processingQ.push(stateEpochSucc);
                             nextNewStateIndex++;
+                            // TODO transitions to special states here if its a goal state + only put in processing queue if it isn't
+                            // TODO what about states with epoch = bottom? we don't really need to pursue them any further, do we? so maybe transition to =( immediately? don't know if that might be a hindrance for multi-cost bounded stuff later tho
+
+                            // TODO maybe extra handling of sink states: instead of making multiple copies where epoch != bottom that eventually lead to a copy where epoch = bottom, make immediate transition to =(
+                            processingQ.push(stateEpochSucc);
                         }
+                        // Add transition
                         uint_fast64_t newSuccState = stateEpochToNewState[stateEpochSucc];
                         transitions[currentEpochState][actionIndex][newSuccState] = entry.getValue();
                         entryCount++;
@@ -92,11 +104,13 @@ namespace storm {
                 }
             }
             // TODO do we want the new states to be ordered a certain way?
+            // Observations
             for (uint_fast64_t i = 0; i < nextNewStateIndex; i++){
+                // TODO extra case for special states =) and =(
                 observations.push_back(originalPOMDP->getObservation(newStateToStateEpoch[i].first));
             }
 
-            // lets get building (taken from beliefmdpexplorer + adapted)
+            // Lets get building (taken from beliefmdpexplorer + adapted)
             storm::storage::SparseMatrixBuilder<ValueType> builder(choiceCount, nextNewStateIndex, entryCount, true, true, nextNewStateIndex);
             uint_fast64_t nextMatrixRow = 0;
             for (uint_fast64_t state = 0; state < transitions.size(); state++){
