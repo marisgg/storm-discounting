@@ -66,7 +66,7 @@ namespace storm {
 
             while (!processingQ.empty()) {
                 auto currentEpochState = processingQ.pop();
-                // TODO add transitions to special states from states with the goal observation
+                // TODO add transitions to special states from states with the goal observation (also see further below)
                 uint_fast64_t rowGroupStart = ogMatrix.getRowGroupIndices()[currentEpochState.first];
                 uint_fast64_t rowGroupSize = ogMatrix.getRowGroupSize(currentEpochState.first);
                 for (auto row = rowGroupStart; row < rowGroupStart + rowGroupSize; row++) {
@@ -93,7 +93,7 @@ namespace storm {
                             // TODO transitions to special states here if its a goal state + only put in processing queue if it isn't
                             // TODO what about states with epoch = bottom? we don't really need to pursue them any further, do we? so maybe transition to =( immediately? don't know if that might be a hindrance for multi-cost bounded stuff later tho
 
-                            // TODO maybe extra handling of sink states: instead of making multiple copies where epoch != bottom that eventually lead to a copy where epoch = bottom, make immediate transition to =(
+                            // TODO maybe extra handling of sink states in og mdp: instead of making multiple copies where epoch != bottom that eventually lead to a copy where epoch = bottom, make immediate transition to =(
                             processingQ.push(stateEpochSucc);
                         }
                         // Add transition
@@ -106,7 +106,7 @@ namespace storm {
             // TODO do we want the new states to be ordered a certain way?
             // Observations
             for (uint_fast64_t i = 0; i < nextNewStateIndex; i++){
-                // TODO extra case for special states =) and =(
+                // TODO extra case for special states =) and =(. are the observation numbers dependent on eg state labeling?
                 observations.push_back(originalPOMDP->getObservation(newStateToStateEpoch[i].first));
             }
 
