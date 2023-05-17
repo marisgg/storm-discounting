@@ -12,7 +12,7 @@ namespace storm {
         class BoundUnfolder {
            public:
             BoundUnfolder() = default;
-            std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> unfold(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::QuantileFormula& formula);
+            std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic::UntilFormula> unfold(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::QuantileFormula& formula);
            private:
         };
 
