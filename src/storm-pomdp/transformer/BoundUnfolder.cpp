@@ -29,7 +29,7 @@ namespace storm {
             // Grab matrix (mostly for coding convenience to just have it in a variable here)
             auto& ogMatrix = originalPOMDP->getTransitionMatrix();
 
-            // TODO determine goal states
+            // Grab goal states
             auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(originalPOMDP, formula);
             auto targetStates = formulaInfo.getTargetStates();
 
@@ -143,7 +143,7 @@ namespace storm {
             auto unfoldedTransitionMatrix = builder.build();
 
             // TODO build pomdp
-            
+            auto components = storm::storage::sparse::ModelComponents(unfoldedTransitionMatrix, stateLabeling);
             // TODO generate new UntilFormula Pr(max/min)=? [F "=)"]
 
             return std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>();
