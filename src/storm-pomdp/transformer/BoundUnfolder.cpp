@@ -124,9 +124,11 @@ namespace storm {
                 observations.push_back(originalPOMDP->getObservation(newStateToStateEpoch[i].first));
             }
 
-            // TODO state labeling: single label for =) only(?)
+            // State labeling: single label for =)
+            auto stateLabeling = storm::models::sparse::StateLabeling(stateEpochToNewState.size() + 2);
+            stateLabeling.addLabelToState("=)", 0);
 
-            // Lets get building (taken from beliefmdpexplorer + adapted)
+            // Build Matrix (taken from beliefmdpexplorer + adapted)
             storm::storage::SparseMatrixBuilder<ValueType> builder(choiceCount, nextNewStateIndex, entryCount, true, true, nextNewStateIndex);
             uint_fast64_t nextMatrixRow = 0;
             for (uint_fast64_t state = 0; state < transitions.size(); state++){
@@ -141,7 +143,7 @@ namespace storm {
             auto unfoldedTransitionMatrix = builder.build();
 
             // TODO build pomdp
-
+            
             // TODO generate new UntilFormula Pr(max/min)=? [F "=)"]
 
             return std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>();
