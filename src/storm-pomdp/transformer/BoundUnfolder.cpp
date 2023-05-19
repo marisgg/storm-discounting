@@ -3,10 +3,14 @@
 //
 
 #include "BoundUnfolder.h"
-#include "storm/logic/BoundedUntilFormula.h"
-#include "storm/exceptions/NotSupportedException.h"
-#include "storm-pomdp/analysis/FormulaInformation.h"
 #include <queue>
+#include "api/properties.h"
+#include "logic/UntilFormula.h"
+#include "storage/jani/Property.h"
+#include "storm-parsers/api/properties.h"
+#include "storm-pomdp/analysis/FormulaInformation.h"
+#include "storm/exceptions/NotSupportedException.h"
+#include "storm/logic/BoundedUntilFormula.h"
 
 namespace storm {
     namespace transformer {
@@ -117,7 +121,7 @@ namespace storm {
                 }
             }
 
-            // Observations TODO put them in modelcomponents as well
+            // Observations TODO how to put them in modelcomponents as well
             observations.push_back(originalPOMDP->getNrObservations()); // =)
             observations.push_back(originalPOMDP->getNrObservations() + 1); // =(
             for (uint_fast64_t i = 2; i < nextNewStateIndex; i++){
@@ -144,9 +148,14 @@ namespace storm {
 
             // TODO build pomdp
             auto components = storm::storage::sparse::ModelComponents(unfoldedTransitionMatrix, stateLabeling);
-            // TODO generate new UntilFormula Pr(max/min)=? [F "=)"]
+            auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(components);
 
-            return std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>();
+            // Generate new UntilFormula
+            std::string propertyString = "Pmax=? F[\"=)\"]"; // TODO expand to minimizing sometime
+            std::vector<storm::jani::Property> propertyVector = storm::api::parseProperties(propertyString);
+            storm::logic::UntilFormula newFormula =  storm::api::extractFormulasFromProperties(propertyVector).front()->asUntilFormula();
+
+            return std::make_pair(newFormula, std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)));
         }
     }
 }

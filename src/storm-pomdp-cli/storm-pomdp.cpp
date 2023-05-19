@@ -21,6 +21,7 @@
 #include "storm-pomdp/transformer/PomdpMemoryUnfolder.h"
 #include "storm-pomdp/transformer/BinaryPomdpTransformer.h"
 #include "storm-pomdp/transformer/MakePOMDPCanonic.h"
+#include "storm-pomdp/transformer/BoundUnfolder.h"
 #include "storm-pomdp/analysis/UniqueObservationStates.h"
 #include "storm-pomdp/analysis/QualitativeAnalysisOnGraphs.h"
 #include "storm-pomdp/modelchecker/BeliefExplorationPomdpModelChecker.h"
@@ -437,6 +438,12 @@ namespace storm {
                 }
             
                 if (formula) {
+                    if (formula->isBoundedUntilFormula()) {
+                        auto unfolder = storm::transformer::BoundUnfolder();
+                        auto unfoldedStuff = unfolder.unfold(pomdp, formula);
+                        pomdp = unfoldedStuff.first;
+                        formula = unfoldedStuff.second;
+                    }
                     auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);
                     STORM_LOG_THROW(!formulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException, "The formula '" << *formula << "' is not supported by storm-pomdp.");
                     
