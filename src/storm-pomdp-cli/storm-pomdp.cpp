@@ -439,10 +439,13 @@ namespace storm {
             
                 if (formula) {
                     if (formula->isBoundedUntilFormula()) {
-                        auto unfolder = storm::transformer::BoundUnfolder();
-                        auto unfoldedStuff = unfolder.unfold(pomdp, formula);
+                        pomdp->writeDotToStream(std::cout);
+                        auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
+                        auto unfoldedStuff = unfolder.unfold(pomdp, formula->asQuantileFormula());
                         pomdp = unfoldedStuff.first;
-                        formula = unfoldedStuff.second;
+                        pomdp->writeDotToStream(std::cout);
+                        formula->writeToStream(std::cout);
+                        formula = std::make_shared<storm::logic::UntilFormula const>(unfoldedStuff.second);
                     }
                     auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);
                     STORM_LOG_THROW(!formulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException, "The formula '" << *formula << "' is not supported by storm-pomdp.");

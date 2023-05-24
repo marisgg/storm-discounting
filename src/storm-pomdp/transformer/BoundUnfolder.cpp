@@ -75,53 +75,52 @@ namespace storm {
 
             while (!processingQ.empty()) {
                 auto currentEpochState = processingQ.pop();
-                if (targetStates.states[currentEpochState.first] && currentEpochState.second != storm::utility::infinity<ValueType>()) {
-                    // Goal state with epoch != bottom: transition to =)
+                uint_fast64_t rowGroupStart = ogMatrix.getRowGroupIndices()[currentEpochState.first];
+                uint_fast64_t rowGroupSize = ogMatrix.getRowGroupSize(currentEpochState.first);
+                for (auto actionIndex = 0; actionIndex < rowGroupSize; actionIndex++) {
                     choiceCount++;
-                    entryCount++;
-                    transitions[stateEpochToNewState[currentEpochState]][0][0] = storm::utility::one<ValueType>();
-                } else if (currentEpochState.second == storm::utility::infinity<ValueType>() || originalPOMDP->isSinkState(currentEpochState.first)) {
-                    // Any state with epoch == bottom or sink state in og MDP: transition to =(
-                    choiceCount++;
-                    entryCount++;
-                    transitions[stateEpochToNewState[currentEpochState]][0][1] = storm::utility::one<ValueType>();
-                } else {
-                    uint_fast64_t rowGroupStart = ogMatrix.getRowGroupIndices()[currentEpochState.first];
-                    uint_fast64_t rowGroupSize = ogMatrix.getRowGroupSize(currentEpochState.first);
-                    for (auto actionIndex = 0; actionIndex < rowGroupSize; actionIndex++) {
-                        choiceCount++;
-                        auto row = rowGroupStart + actionIndex;
-                        auto reward = rewModel.getStateActionReward(row);
-                        for (auto entry : ogMatrix.getRow(row)) {
-                            // Calculate unfolded successor state
-                            uint_fast64_t oldSuccState = entry.getColumn();
-                            ValueType epoch;
-                            if (currentEpochState.second >= reward) {
-                                epoch = currentEpochState.second - rewModel.getStateActionReward(row);
+                    auto row = rowGroupStart + actionIndex;
+                    auto reward = rewModel.getStateActionReward(row);
+                    for (auto entry : ogMatrix.getRow(row)) {
+                        // Get successor state
+                        uint_fast64_t oldSuccState = entry.getColumn();
+                        if (currentEpochState.second >= reward) {
+                            // Successor with epoch != bottom
+                            if (targetStates[oldSuccState]) {
+                                // Successor is goal state with epoch != bottom: Transition to =)
+                                transitions[stateEpochToNewState[currentEpochState]][actionIndex][0] = entry.getValue();
+                                entryCount++;
                             } else {
-                                epoch = storm::utility::infinity<ValueType>();
+                                // Successor with epoch != bottom but not a goal state
+                                ValueType epoch = currentEpochState.second - rewModel.getStateActionReward(row);
+                                auto stateEpochSucc = std::make_pair(oldSuccState, epoch);
+                                if (stateEpochToNewState.find(stateEpochSucc) == stateEpochToNewState.end()) {
+                                    // Unfolded successor does not exist yet: create it + add it to processing queue
+                                    stateEpochToNewState[stateEpochSucc] = nextNewStateIndex;
+                                    newStateToStateEpoch[nextNewStateIndex] = stateEpochSucc;
+                                    numberOfActions = ogMatrix.getRowGroupSize(oldSuccState);
+                                    transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(
+                                        std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), numberOfActions));
+                                    nextNewStateIndex++;
+                                    processingQ.push(stateEpochSucc);
+                                }
+                                // Add transition
+                                uint_fast64_t newSuccState = stateEpochToNewState[stateEpochSucc];
+                                transitions[stateEpochToNewState[currentEpochState]][actionIndex][newSuccState] = entry.getValue();
+                                entryCount++;
                             }
-                            auto stateEpochSucc = std::make_pair(oldSuccState, epoch);
-                            // If unfolded successor does not exist yet, create it + add it to processing queue
-                            if (stateEpochToNewState.find(stateEpochSucc) == stateEpochToNewState.end()) {
-                                stateEpochToNewState[stateEpochSucc] = nextNewStateIndex;
-                                newStateToStateEpoch[nextNewStateIndex] = stateEpochSucc;
-                                numberOfActions = ogMatrix.getRowGroupSize(oldSuccState);
-                                transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(
-                                    std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), numberOfActions));
-                                nextNewStateIndex++;
-                                processingQ.push(stateEpochSucc);
-                            }
-                            // Add transition
-                            uint_fast64_t newSuccState = stateEpochToNewState[stateEpochSucc];
-                            transitions[stateEpochToNewState[currentEpochState]][actionIndex][newSuccState] = entry.getValue();
+                        } else {
+                            // Successor with epoch == bottom: Transition to =(
+                            // TODO add case of non-goal sink states here?
+                            transitions[stateEpochToNewState[currentEpochState]][actionIndex][1] = entry.getValue();
                             entryCount++;
                         }
+
                     }
                 }
             }
 
-            // Observations TODO how to put them in modelcomponents as well
+            // Observations
             observations.push_back(originalPOMDP->getNrObservations()); // =)
             observations.push_back(originalPOMDP->getNrObservations() + 1); // =(
             for (uint_fast64_t i = 2; i < nextNewStateIndex; i++){
@@ -146,12 +145,13 @@ namespace storm {
             }
             auto unfoldedTransitionMatrix = builder.build();
 
-            // TODO build pomdp
-            auto components = storm::storage::sparse::ModelComponents(unfoldedTransitionMatrix, stateLabeling);
-            auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(components);
+            // Build pomdp
+            auto components = storm::storage::sparse::ModelComponents(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
+            auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(std::move(components));
+            unfoldedPomdp.setObservations(observations);
 
             // Generate new UntilFormula
-            std::string propertyString = "Pmax=? F[\"=)\"]"; // TODO expand to minimizing sometime
+            std::string propertyString = "Pmax=? F[\"=)\"]";
             std::vector<storm::jani::Property> propertyVector = storm::api::parseProperties(propertyString);
             storm::logic::UntilFormula newFormula =  storm::api::extractFormulasFromProperties(propertyVector).front()->asUntilFormula();
 
