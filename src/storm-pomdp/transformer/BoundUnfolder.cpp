@@ -24,11 +24,11 @@ namespace storm {
             auto temp = std::set<std::string>();
             formula.gatherReferencedRewardModels(temp);
             assert(temp.size() == 1);
-            auto rewModel = originalPOMDP->getRewardModel(temp.begin());
+            auto rewModel = originalPOMDP->getRewardModel(*temp.begin());
             STORM_LOG_THROW(rewModel.hasStateActionRewards(), storm::exceptions::NotSupportedException, "Only state action rewards are currently supported.");
 
             // Grab bound
-            ValueType bound = formula.getSubformula().asBoundedUntilFormula().getUpperBound();
+            ValueType bound = getBound(formula);
 
             // Grab matrix (mostly for coding convenience to just have it in a variable here)
             auto& ogMatrix = originalPOMDP->getTransitionMatrix();
@@ -157,5 +157,20 @@ namespace storm {
 
             return std::make_pair(newFormula, std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)));
         }
+
+        template<>
+        double BoundUnfolder<double>::getBound(const storm::logic::QuantileFormula& formula){
+            STORM_LOG_THROW(formula.getSubformula().asBoundedUntilFormula().getUpperBound().hasNumericalType(), storm::exceptions::NotSupportedException, "ValueType of model and Bound ValueType not matching");
+            return formula.getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsDouble();
+        }
+
+        template<>
+        storm::RationalNumber BoundUnfolder<storm::RationalNumber>::getBound(const storm::logic::QuantileFormula& formula){
+            STORM_LOG_THROW(formula.getSubformula().asBoundedUntilFormula().getUpperBound().hasRationalType(), storm::exceptions::NotSupportedException, "ValueType of model and Bound ValueType not matching");
+            return formula.getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsRational();
+        }
+
+        template class BoundUnfolder<double>;
+        template class BoundUnfolder<storm::RationalNumber>;
     }
 }

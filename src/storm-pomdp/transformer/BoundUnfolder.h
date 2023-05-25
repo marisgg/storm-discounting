@@ -14,6 +14,7 @@ namespace storm {
             BoundUnfolder() = default;
             std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic::UntilFormula> unfold(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::QuantileFormula& formula);
            private:
+            ValueType getBound(const storm::logic::QuantileFormula& formula);
         };
 
         }
