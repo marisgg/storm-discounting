@@ -162,7 +162,7 @@ namespace storm {
             std::vector<storm::jani::Property> propertyVector = storm::api::parseProperties(propertyString);
             storm::logic::UntilFormula newFormula =  storm::api::extractFormulasFromProperties(propertyVector).front()->asUntilFormula();
 
-            return std::make_pair(newFormula, std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)));
+            return std::make_pair(std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)), newFormula);
         }
 
         template<>
