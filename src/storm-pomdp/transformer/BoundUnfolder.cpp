@@ -35,7 +35,7 @@ namespace storm {
 
             // Grab goal states
             auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(originalPOMDP, formula);
-            auto targetStates = formulaInfo.getTargetStates();
+            auto targetStates = formulaInfo.getTargetStates().states;
 
             // Transformation information + variables (remove non-necessary ones later)
             auto stateEpochToNewState  = std::map<std::pair<uint_fast64_t, ValueType>, uint_fast64_t>();
@@ -44,18 +44,20 @@ namespace storm {
             std::queue<std::pair<uint_fast64_t, ValueType>> processingQ; // queue does BFS, if DFS is desired, change to stack
 
             // Information for unfolded model
-            auto transitions = std::vector<std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>>();
+            auto transitions = std::vector<std::vector<std::map<uint_fast64_t, ValueType>>>();
             auto observations = std::vector<uint32_t>();
             uint_fast64_t entryCount = 0;
             uint_fast64_t choiceCount = 0;
 
             // Special sink states: 0 is =), 1 is =(
-            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), 1));
-            transitions [0][0][0] = storm::utility::one<ValueType>();
+            transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
+            transitions[0].push_back(std::map<uint_fast64_t, ValueType>());
+            transitions[0][0][0] = storm::utility::one<ValueType>();
             entryCount++;
             choiceCount++;
-            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), 1));
-            transitions [1][0][1] = storm::utility::one<ValueType>();
+            transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
+            transitions[0].push_back(std::map<uint_fast64_t, ValueType>());
+            transitions[1][0][1] = storm::utility::one<ValueType>();
             entryCount++;
             choiceCount++;
 
@@ -65,20 +67,22 @@ namespace storm {
             auto initEpochState = std::make_pair(initState, bound);
             processingQ.push(initEpochState);
             auto numberOfActions = ogMatrix.getRowGroupSize(initState);
-            transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), numberOfActions));
+            transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
+            for (auto i = 0; i < numberOfActions; i++){
+                transitions[nextNewStateIndex].push_back(std::map<uint_fast64_t, ValueType>());
+                choiceCount++;
+            }
             stateEpochToNewState[initEpochState] = nextNewStateIndex;
             newStateToStateEpoch[nextNewStateIndex] = initEpochState;
             nextNewStateIndex++;
-            entryCount++;
-            choiceCount++;
 
 
             while (!processingQ.empty()) {
-                auto currentEpochState = processingQ.pop();
+                std::pair<uint_fast64_t, ValueType> currentEpochState =processingQ.front();
+                processingQ.pop();
                 uint_fast64_t rowGroupStart = ogMatrix.getRowGroupIndices()[currentEpochState.first];
                 uint_fast64_t rowGroupSize = ogMatrix.getRowGroupSize(currentEpochState.first);
                 for (auto actionIndex = 0; actionIndex < rowGroupSize; actionIndex++) {
-                    choiceCount++;
                     auto row = rowGroupStart + actionIndex;
                     auto reward = rewModel.getStateActionReward(row);
                     for (auto entry : ogMatrix.getRow(row)) {
@@ -99,8 +103,11 @@ namespace storm {
                                     stateEpochToNewState[stateEpochSucc] = nextNewStateIndex;
                                     newStateToStateEpoch[nextNewStateIndex] = stateEpochSucc;
                                     numberOfActions = ogMatrix.getRowGroupSize(oldSuccState);
-                                    transitions.push_back(std::vector<std::map<std::pair<uint_fast64_t, ValueType>, ValueType>>(
-                                        std::map<std::pair<uint_fast64_t, ValueType>, ValueType>(), numberOfActions));
+                                    transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
+                                    for (auto i = 0; i < numberOfActions; i++){
+                                        transitions[nextNewStateIndex].push_back(std::map<uint_fast64_t, ValueType>());
+                                        choiceCount++;
+                                    }
                                     nextNewStateIndex++;
                                     processingQ.push(stateEpochSucc);
                                 }
