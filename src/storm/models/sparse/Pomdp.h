@@ -83,7 +83,7 @@ class Pomdp : public Mdp<ValueType, RewardModelType> {
 
     storm::storage::sparse::StateValuations const &getObservationValuations() const;
 
-    boost::optional<storm::storage::sparse::StateValuations> const &getOptionalObservationValuations() const;
+    std::optional<storm::storage::sparse::StateValuations> const &getOptionalObservationValuations() const;
 
     bool isCanonic() const;
 
@@ -106,7 +106,7 @@ class Pomdp : public Mdp<ValueType, RewardModelType> {
     uint64_t nrObservations;
     bool canonicFlag = false;
 
-    boost::optional<storm::storage::sparse::StateValuations> observationValuations;
+    std::optional<storm::storage::sparse::StateValuations> observationValuations;
 
     void computeNrObservations();
 };
