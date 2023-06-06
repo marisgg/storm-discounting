@@ -22,6 +22,7 @@
 #include "storm-pomdp/modelchecker/BeliefExplorationPomdpModelChecker.h"
 #include "storm-pomdp/transformer/ApplyFiniteSchedulerToPomdp.h"
 #include "storm-pomdp/transformer/BinaryPomdpTransformer.h"
+#include "storm-pomdp/transformer/BoundUnfolder.h"
 #include "storm-pomdp/transformer/GlobalPOMDPSelfLoopEliminator.h"
 #include "storm-pomdp/transformer/GlobalPomdpMecChoiceEliminator.h"
 #include "storm-pomdp/transformer/KnownProbabilityTransformer.h"
@@ -417,6 +418,14 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
     }
 
     if (formula) {
+        if (formula->isBoundedUntilFormula()) {
+            auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
+            auto unfoldedStuff = unfolder.unfold(pomdp, formula->asQuantileFormula());
+            pomdp = unfoldedStuff.first;
+            formula = std::make_shared<storm::logic::UntilFormula const>(unfoldedStuff.second);
+            pomdp->writeDotToStream(std::cout);
+            formula->writeToStream(std::cout);
+        }
         auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);
         STORM_LOG_THROW(!formulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException,
                         "The formula '" << *formula << "' is not supported by storm-pomdp.");
