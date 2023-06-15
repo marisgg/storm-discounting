@@ -25,6 +25,7 @@ const std::string memoryPatternOption = "memorypattern";
 std::vector<std::string> memoryPatterns = {"trivial", "fixedcounter", "selectivecounter", "ring", "fixedring", "settablebits", "full"};
 const std::string checkFullyObservableOption = "check-fully-observable";
 const std::string isQualitativeOption = "qualitative-analysis";
+const std::string goalHsviOption = "use-goal-hsvi";
 
 POMDPSettings::POMDPSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, noCanonicOption, false,
@@ -63,6 +64,7 @@ POMDPSettings::POMDPSettings() : ModuleSettings(moduleName) {
             .build());
     this->addOption(
         storm::settings::OptionBuilder(moduleName, checkFullyObservableOption, false, "Performs standard model checking on the underlying MDP").build());
+    this->addOption(storm::settings::OptionBuilder(moduleName, goalHsviOption, false, "Performs standard model checking on the underlying MDP").build());
     this->addOption(storm::settings::OptionBuilder(moduleName, isQualitativeOption, false, "Sets the option qualitative analysis").build());
 }
 
@@ -92,6 +94,10 @@ bool POMDPSettings::isSelfloopReductionSet() const {
 
 bool POMDPSettings::isBeliefExplorationSet() const {
     return this->getOption(beliefExplorationOption).getHasOptionBeenSet();
+}
+
+bool POMDPSettings::isUseGoalHsviSet() const {
+    return this->getOption(goalHsviOption).getHasOptionBeenSet();
 }
 
 bool POMDPSettings::isBeliefExplorationDiscretizeSet() const {

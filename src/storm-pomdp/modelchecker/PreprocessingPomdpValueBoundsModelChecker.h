@@ -38,6 +38,11 @@ class PreprocessingPomdpValueBoundsModelChecker {
 
     ExtremeValueBound getExtremeValueBound(storm::Environment const& env, storm::logic::Formula const& formula,
                                            storm::pomdp::analysis::FormulaInformation const& info);
+    std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> computeValuesForUniformPolicy(
+        storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info);
+
+    std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> computeValuesForUniformPolicy(
+        storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info);
 
    private:
     storm::models::sparse::Pomdp<ValueType> const& pomdp;

@@ -20,6 +20,7 @@
 #include "storm-pomdp/analysis/QualitativeAnalysisOnGraphs.h"
 #include "storm-pomdp/analysis/UniqueObservationStates.h"
 #include "storm-pomdp/modelchecker/BeliefExplorationPomdpModelChecker.h"
+#include "storm-pomdp/modelchecker/GoalHsviModelChecker.h"
 #include "storm-pomdp/transformer/ApplyFiniteSchedulerToPomdp.h"
 #include "storm-pomdp/transformer/BinaryPomdpTransformer.h"
 #include "storm-pomdp/transformer/GlobalPOMDPSelfLoopEliminator.h"
@@ -253,6 +254,20 @@ bool performAnalysis(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> co
                      storm::logic::Formula const& formula) {
     auto const& pomdpSettings = storm::settings::getModule<storm::settings::modules::POMDPSettings>();
     bool analysisPerformed = false;
+    if (pomdpSettings.isUseGoalHsviSet()) {
+        STORM_PRINT_AND_LOG("Use Goal HSVI to check the POMDP \n");
+        storm::pomdp::modelchecker::GoalHsviModelChecker<storm::models::sparse::Pomdp<ValueType>, BeliefType> checker(pomdp);
+        auto result = checker.check(formula);
+        if (storm::utility::resources::isTerminate()) {
+            STORM_PRINT_AND_LOG("\nResult till abort: ")
+        } else {
+            STORM_PRINT_AND_LOG("\nResult: ")
+        }
+        printResult(result.lowerBound, result.upperBound);
+        STORM_PRINT_AND_LOG('\n');
+        analysisPerformed = true;
+    }
+
     if (pomdpSettings.isBeliefExplorationSet()) {
         STORM_PRINT_AND_LOG("Exploring the belief MDP... \n");
         auto options = storm::pomdp::modelchecker::BeliefExplorationPomdpModelCheckerOptions<ValueType>(pomdpSettings.isBeliefExplorationDiscretizeSet(),

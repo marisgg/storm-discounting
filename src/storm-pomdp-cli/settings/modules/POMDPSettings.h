@@ -27,6 +27,7 @@ class POMDPSettings : public ModuleSettings {
 
     bool isNoCanonicSet() const;
     bool isBeliefExplorationSet() const;
+    bool isUseGoalHsviSet() const;
     bool isBeliefExplorationDiscretizeSet() const;
     bool isBeliefExplorationUnfoldSet() const;
     bool isAnalyzeUniqueObservationsSet() const;

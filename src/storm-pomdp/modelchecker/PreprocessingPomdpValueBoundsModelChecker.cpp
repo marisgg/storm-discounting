@@ -153,6 +153,47 @@ std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> Preproce
 }
 
 template<typename ValueType>
+std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> PreprocessingPomdpValueBoundsModelChecker<ValueType>::computeValuesForUniformPolicy(
+    storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info) {
+    storm::Environment env;
+    return computeValuesForUniformPolicy(env, formula, info);
+}
+
+template<typename ValueType>
+std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> PreprocessingPomdpValueBoundsModelChecker<ValueType>::computeValuesForUniformPolicy(
+    storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info) {
+    // Initialise policy
+    storm::storage::Scheduler<ValueType> pomdpScheduler(pomdp.getNumberOfStates());
+
+    // Determine an observation-based policy by choosing any of the enabled actions uniformly at random
+    std::vector<storm::storage::Distribution<ValueType, uint_fast64_t>> choiceDistributions(pomdp.getNrObservations());
+
+    for (uint64_t obs = 0; obs < pomdp.getNrObservations(); ++obs) {
+        uint64_t nrChoices = pomdp.getNumberOfChoices(pomdp.getStatesWithObservation(obs).front());
+        auto& choiceDistribution = choiceDistributions[obs];
+        for (uint64_t i = 0; i < nrChoices; ++i) {
+            choiceDistribution.addProbability(i, 1);
+        }
+        choiceDistribution.normalize();
+    }
+
+    for (uint64_t state = 0; state < pomdp.getNumberOfStates(); ++state) {
+        pomdpScheduler.setChoice(choiceDistributions[pomdp.getObservation(state)], state);
+    }
+
+    // Model check the DTMC resulting from the policy
+    auto underlyingMdp =
+        std::make_shared<storm::models::sparse::Mdp<ValueType>>(pomdp.getTransitionMatrix(), pomdp.getStateLabeling(), pomdp.getRewardModels());
+    auto scheduledModel = underlyingMdp->applyScheduler(pomdpScheduler, false);
+    auto resultPtr = storm::api::verifyWithSparseEngine<ValueType>(env, scheduledModel, storm::api::createTask<ValueType>(formula.asSharedPointer(), false));
+    STORM_LOG_THROW(resultPtr, storm::exceptions::UnexpectedException, "No check result obtained.");
+    STORM_LOG_THROW(resultPtr->isExplicitQuantitativeCheckResult(), storm::exceptions::UnexpectedException, "Unexpected Check result Type");
+    std::vector<ValueType> pomdpSchedulerResult = std::move(resultPtr->template asExplicitQuantitativeCheckResult<ValueType>().getValueVector());
+
+    return std::make_pair(pomdpSchedulerResult, pomdpScheduler);
+}
+
+template<typename ValueType>
 std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>>
 PreprocessingPomdpValueBoundsModelChecker<ValueType>::computeValuesForRandomMemorylessPolicy(
     storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info,
