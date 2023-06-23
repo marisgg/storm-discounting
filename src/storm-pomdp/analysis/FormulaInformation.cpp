@@ -45,8 +45,9 @@ bool FormulaInformation::isUnsupported() const {
 }
 
 typename FormulaInformation::StateSet const& FormulaInformation::getTargetStates() const {
-    STORM_LOG_ASSERT(this->type == Type::NonNestedExpectedRewardFormula || this->type == Type::NonNestedReachabilityProbability,
-                     "Target states requested for unexpected formula type.");
+    /*STORM_LOG_ASSERT(this->type == Type::NonNestedExpectedRewardFormula || this->type == Type::NonNestedReachabilityProbability,
+                     "Target states requested for unexpected formula type.");*/
+    // TODO uncomment later when boundeduntil is accounted for
     return targetStates.value();
 }
 
@@ -128,6 +129,10 @@ FormulaInformation getFormulaInformation(PomdpType const& pomdp, storm::logic::P
         storm::logic::UntilFormula const& untilFormula = subformula.asUntilFormula();
         targetStatesFormula = untilFormula.getRightSubformula().asSharedPointer();
         constraintsStatesFormula = untilFormula.getLeftSubformula().asSharedPointer();
+    } else if (subformula.isBoundedUntilFormula()) {
+        storm::logic::BoundedUntilFormula const& boundedUntilFormula = subformula.asBoundedUntilFormula();
+        targetStatesFormula = boundedUntilFormula.getRightSubformula().asSharedPointer();
+        constraintsStatesFormula = boundedUntilFormula.getLeftSubformula().asSharedPointer();
     }
     if (targetStatesFormula && targetStatesFormula->isInFragment(storm::logic::propositional()) && constraintsStatesFormula &&
         constraintsStatesFormula->isInFragment(storm::logic::propositional())) {

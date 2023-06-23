@@ -12,11 +12,11 @@ template<typename ValueType>
 class BoundUnfolder {
    public:
     BoundUnfolder() = default;
-    std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic::UntilFormula> unfold(
-        std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::QuantileFormula& formula);
+    std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic::ProbabilityOperatorFormula> unfold(
+        std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::Formula& formula);
 
    private:
-    ValueType getBound(const storm::logic::QuantileFormula& formula);
+    ValueType getBound(const storm::logic::Formula& formula);
 };
 
 }  // namespace transformer

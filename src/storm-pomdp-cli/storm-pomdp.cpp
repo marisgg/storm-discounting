@@ -418,12 +418,19 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
     }
 
     if (formula) {
-        if (formula->isBoundedUntilFormula()) {
+        if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula()) {
             auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
-            auto unfoldedStuff = unfolder.unfold(pomdp, formula->asQuantileFormula());
-            pomdp = unfoldedStuff.first;
-            formula = std::make_shared<storm::logic::UntilFormula const>(unfoldedStuff.second);
+            auto unfoldedStuff = unfolder.unfold(pomdp, *formula.get());
+            unfoldedStuff.second.writeToStream(std::cout);
+            std::cout << "\nORIGINAL POMDP:\n";
             pomdp->writeDotToStream(std::cout);
+            std::cout << "\nORIGINAL FORMULA:\n";
+            formula->writeToStream(std::cout);
+            pomdp = unfoldedStuff.first;
+            formula = std::make_shared<storm::logic::ProbabilityOperatorFormula const>(unfoldedStuff.second);
+            std::cout << "\nUNFOLDED POMDP:\n";
+            pomdp->writeDotToStream(std::cout);
+            std::cout << "\nNEW FORMULA:\n";
             formula->writeToStream(std::cout);
         }
         auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);

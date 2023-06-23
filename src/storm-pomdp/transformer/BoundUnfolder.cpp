@@ -15,12 +15,11 @@
 namespace storm {
 namespace transformer {
 template<typename ValueType>
-std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic::UntilFormula> BoundUnfolder<ValueType>::unfold(
-    std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::QuantileFormula& formula) {
+std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic::ProbabilityOperatorFormula> BoundUnfolder<ValueType>::unfold(
+    std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::Formula& formula) {
     // Check formula
-    assert(!formula.isMultiDimensional());
-    STORM_LOG_THROW(formula.isProbabilityOperatorFormula() && formula.getSubformula().isBoundedUntilFormula() &&
-                        formula.getSubformula().asBoundedUntilFormula().getLeftSubformula().isTrueFormula(),
+    STORM_LOG_THROW(formula.isProbabilityOperatorFormula() && formula.asOperatorFormula().getSubformula().isBoundedUntilFormula() &&
+                        formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getLeftSubformula().isTrueFormula(),
                     storm::exceptions::NotSupportedException, "Unexpected formula type of formula " << formula);
 
     // Grab reward model
@@ -48,6 +47,7 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
 
     // Information for unfolded model
     auto transitions = std::vector<std::vector<std::map<uint_fast64_t, ValueType>>>();
+    // first index (vec): origin state, second index(vec): action, third index(map): destination state, value(map):probability
     auto observations = std::vector<uint32_t>();
     uint_fast64_t entryCount = 0;
     uint_fast64_t choiceCount = 0;
@@ -59,7 +59,7 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     entryCount++;
     choiceCount++;
     transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
-    transitions[0].push_back(std::map<uint_fast64_t, ValueType>());
+    transitions[1].push_back(std::map<uint_fast64_t, ValueType>());
     transitions[1][0][1] = storm::utility::one<ValueType>();
     entryCount++;
     choiceCount++;
@@ -137,7 +137,12 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
 
     // State labeling: single label for =)
     auto stateLabeling = storm::models::sparse::StateLabeling(stateEpochToNewState.size() + 2);
-    stateLabeling.addLabelToState("=)", 0);
+    auto labeling = storm::storage::BitVector(nextNewStateIndex, false);
+    labeling.set(0);
+    stateLabeling.addLabel("goal", labeling);
+    labeling = storm::storage::BitVector(nextNewStateIndex, false);
+    labeling.set(2);
+    stateLabeling.addLabel("init", labeling);
 
     // Build Matrix (taken from beliefmdpexplorer + adapted)
     storm::storage::SparseMatrixBuilder<ValueType> builder(choiceCount, nextNewStateIndex, entryCount, true, true, nextNewStateIndex);
@@ -147,37 +152,37 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
         for (auto action = 0; action < transitions[state].size(); action++) {
             for (auto const& entry : transitions[state][action]) {
                 builder.addNextValue(nextMatrixRow, entry.first, entry.second);
-                nextMatrixRow++;
             }
+            nextMatrixRow++;
         }
     }
     auto unfoldedTransitionMatrix = builder.build();
 
     // Build pomdp
-    auto components = storm::storage::sparse::ModelComponents(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
-    auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(std::move(components));
+    //auto components = storm::storage::sparse::ModelComponents(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
+    auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
     unfoldedPomdp.setObservations(observations);
 
     // Generate new UntilFormula
-    std::string propertyString = "Pmax=? F[\"=)\"]";
+    std::string propertyString = "Pmax=? [F\"goal\"]";
     std::vector<storm::jani::Property> propertyVector = storm::api::parseProperties(propertyString);
-    storm::logic::UntilFormula newFormula = storm::api::extractFormulasFromProperties(propertyVector).front()->asUntilFormula();
+    storm::logic::ProbabilityOperatorFormula newFormula = storm::api::extractFormulasFromProperties(propertyVector).front()->asProbabilityOperatorFormula();
 
     return std::make_pair(std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)), newFormula);
 }
 
 template<>
-double BoundUnfolder<double>::getBound(const storm::logic::QuantileFormula& formula) {
-    STORM_LOG_THROW(formula.getSubformula().asBoundedUntilFormula().getUpperBound().hasNumericalType(), storm::exceptions::NotSupportedException,
+double BoundUnfolder<double>::getBound(const storm::logic::Formula& formula) {
+    STORM_LOG_THROW(formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().hasNumericalType(), storm::exceptions::NotSupportedException,
                     "ValueType of model and Bound ValueType not matching");
-    return formula.getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsDouble();
+    return formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsDouble();
 }
 
 template<>
-storm::RationalNumber BoundUnfolder<storm::RationalNumber>::getBound(const storm::logic::QuantileFormula& formula) {
-    STORM_LOG_THROW(formula.getSubformula().asBoundedUntilFormula().getUpperBound().hasRationalType(), storm::exceptions::NotSupportedException,
+storm::RationalNumber BoundUnfolder<storm::RationalNumber>::getBound(const storm::logic::Formula& formula) {
+    STORM_LOG_THROW(formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().hasRationalType(), storm::exceptions::NotSupportedException,
                     "ValueType of model and Bound ValueType not matching");
-    return formula.getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsRational();
+    return formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsRational();
 }
 
 template class BoundUnfolder<double>;
