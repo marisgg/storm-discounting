@@ -158,10 +158,38 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     }
     auto unfoldedTransitionMatrix = builder.build();
 
+    // Build components
+    auto components = storm::storage::sparse::ModelComponents(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
+    components.observabilityClasses = observations;
+
+    // Optional copy of choice labels // TODO fix todo below, then uncomment if condition
+    if (false){//originalPOMDP->hasChoiceLabeling()){
+        auto newChoiceLabeling = storm::models::sparse::ChoiceLabeling(choiceCount);
+        auto oldChoiceLabeling = originalPOMDP->getChoiceLabeling();
+        auto newRowGroupIndices = unfoldedTransitionMatrix.getRowGroupIndices();
+        auto oldRowGroupIndices = originalPOMDP->getTransitionMatrix().getRowGroupIndices();
+
+        //assert (unfoldedTransitionMatrix.getRowGroupSize(0) + unfoldedTransitionMatrix.getRowGroupSize(1) == newRowGroupIndices[2]);
+
+        for (uint_fast64_t newState = 2; newState < transitions.size(); newState++) {
+            auto oldState = newStateToStateEpoch[newState].first;
+            auto oldChoiceIndex = oldRowGroupIndices[oldState];
+            auto newChoiceIndex = newRowGroupIndices[newState]; // TODO this is empty, why
+            for (auto action = 0; action < transitions[newState].size(); action++) {
+                for (auto label : oldChoiceLabeling.getLabelsOfChoice(oldChoiceIndex + action)) {
+                    if (!newChoiceLabeling.containsLabel(label)) {
+                        newChoiceLabeling.addLabel(label);
+                    }
+                    newChoiceLabeling.addLabelToChoice(label, newChoiceIndex + action);
+                }
+            }
+        }
+        components.choiceLabeling = std::move(newChoiceLabeling);
+    }
+
     // Build pomdp
-    //auto components = storm::storage::sparse::ModelComponents(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
-    auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
-    unfoldedPomdp.setObservations(observations);
+    auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(std::move(components));
+
 
     // Generate new UntilFormula
     std::string propertyString = "Pmax=? [F\"goal\"]";

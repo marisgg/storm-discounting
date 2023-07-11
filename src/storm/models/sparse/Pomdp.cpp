@@ -150,10 +150,6 @@ std::size_t Pomdp<ValueType, RewardModelType>::hash() const {
     boost::hash_combine(seed, boost::hash_range(observations.begin(), observations.end()));
     return seed;
 }
-template<class ValueType, typename RewardModelType>
-void Pomdp<ValueType, RewardModelType>::setObservations(std::vector<uint32_t> observations) {
-    this->observations = observations;
-}
 
 template class Pomdp<double>;
 template class Pomdp<storm::RationalNumber>;

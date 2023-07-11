@@ -55,8 +55,6 @@ class Pomdp : public Mdp<ValueType, RewardModelType> {
 
     uint32_t getObservation(uint64_t state) const;
 
-    void setObservations(std::vector<uint32_t> observations);
-
     uint64_t getNrObservations() const;
 
     /*!
