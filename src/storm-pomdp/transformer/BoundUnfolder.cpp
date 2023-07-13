@@ -159,11 +159,11 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     auto unfoldedTransitionMatrix = builder.build();
 
     // Build components
-    auto components = storm::storage::sparse::ModelComponents(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
+    auto components = storm::storage::sparse::ModelComponents(unfoldedTransitionMatrix, std::move(stateLabeling));
     components.observabilityClasses = observations;
 
-    // Optional copy of choice labels // TODO fix todo below, then uncomment if condition
-    if (false){//originalPOMDP->hasChoiceLabeling()){
+    // Optional copy of choice labels
+    if (originalPOMDP->hasChoiceLabeling()){
         auto newChoiceLabeling = storm::models::sparse::ChoiceLabeling(choiceCount);
         auto oldChoiceLabeling = originalPOMDP->getChoiceLabeling();
         auto newRowGroupIndices = unfoldedTransitionMatrix.getRowGroupIndices();
@@ -174,7 +174,7 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
         for (uint_fast64_t newState = 2; newState < transitions.size(); newState++) {
             auto oldState = newStateToStateEpoch[newState].first;
             auto oldChoiceIndex = oldRowGroupIndices[oldState];
-            auto newChoiceIndex = newRowGroupIndices[newState]; // TODO this is empty, why
+            auto newChoiceIndex = newRowGroupIndices[newState];
             for (auto action = 0; action < transitions[newState].size(); action++) {
                 for (auto label : oldChoiceLabeling.getLabelsOfChoice(oldChoiceIndex + action)) {
                     if (!newChoiceLabeling.containsLabel(label)) {
@@ -189,6 +189,7 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
 
     // Build pomdp
     auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(std::move(components));
+    unfoldedPomdp.setIsCanonic();
 
 
     // Generate new UntilFormula
