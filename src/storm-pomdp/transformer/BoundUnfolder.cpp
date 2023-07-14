@@ -94,7 +94,11 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
                     // Successor with epoch != bottom
                     if (targetStates[oldSuccState]) {
                         // Successor is goal state with epoch != bottom: Transition to =)
-                        transitions[stateEpochToNewState[currentEpochState]][actionIndex][0] = entry.getValue();
+                        if (transitions[stateEpochToNewState[currentEpochState]][actionIndex].find(0) == transitions[stateEpochToNewState[currentEpochState]][actionIndex].end()){
+                            transitions[stateEpochToNewState[currentEpochState]][actionIndex][0] = entry.getValue();
+                        } else {
+                            transitions[stateEpochToNewState[currentEpochState]][actionIndex][0] += entry.getValue();
+                        }
                         entryCount++;
                     } else {
                         // Successor with epoch != bottom but not a goal state
@@ -120,8 +124,13 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
                     }
                 } else {
                     // Successor with epoch == bottom: Transition to =(
-                    // TODO add case of non-goal sink states here?
-                    transitions[stateEpochToNewState[currentEpochState]][actionIndex][1] = entry.getValue();
+                    // TODO add case of non-goal sink states here sometime
+                    if (transitions[stateEpochToNewState[currentEpochState]][actionIndex].find(1) == transitions[stateEpochToNewState[currentEpochState]][actionIndex].end()){
+                        transitions[stateEpochToNewState[currentEpochState]][actionIndex][1] = entry.getValue();
+                    } else {
+                        transitions[stateEpochToNewState[currentEpochState]][actionIndex][1] += entry.getValue();
+                    }
+
                     entryCount++;
                 }
             }
@@ -159,14 +168,14 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     auto unfoldedTransitionMatrix = builder.build();
 
     // Build components
-    auto components = storm::storage::sparse::ModelComponents(unfoldedTransitionMatrix, std::move(stateLabeling));
+    auto components = storm::storage::sparse::ModelComponents(std::move(unfoldedTransitionMatrix), std::move(stateLabeling));
     components.observabilityClasses = observations;
 
     // Optional copy of choice labels
     if (originalPOMDP->hasChoiceLabeling()){
         auto newChoiceLabeling = storm::models::sparse::ChoiceLabeling(choiceCount);
         auto oldChoiceLabeling = originalPOMDP->getChoiceLabeling();
-        auto newRowGroupIndices = unfoldedTransitionMatrix.getRowGroupIndices();
+        auto newRowGroupIndices = components.transitionMatrix.getRowGroupIndices();
         auto oldRowGroupIndices = originalPOMDP->getTransitionMatrix().getRowGroupIndices();
 
         //assert (unfoldedTransitionMatrix.getRowGroupSize(0) + unfoldedTransitionMatrix.getRowGroupSize(1) == newRowGroupIndices[2]);
@@ -189,8 +198,9 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
 
     // Build pomdp
     auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(std::move(components));
-    unfoldedPomdp.setIsCanonic();
-
+    if (originalPOMDP->isCanonic()){
+        unfoldedPomdp.setIsCanonic();
+    }
 
     // Generate new UntilFormula
     std::string propertyString = "Pmax=? [F\"goal\"]";
@@ -203,14 +213,14 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
 template<>
 double BoundUnfolder<double>::getBound(const storm::logic::Formula& formula) {
     STORM_LOG_THROW(formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().hasNumericalType(), storm::exceptions::NotSupportedException,
-                    "ValueType of model and Bound ValueType not matching");
+                    "ValueType of model and bound ValueType not matching");
     return formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsDouble();
 }
 
 template<>
 storm::RationalNumber BoundUnfolder<storm::RationalNumber>::getBound(const storm::logic::Formula& formula) {
     STORM_LOG_THROW(formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().hasRationalType(), storm::exceptions::NotSupportedException,
-                    "ValueType of model and Bound ValueType not matching");
+                    "ValueType of model and bound ValueType not matching");
     return formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsRational();
 }
 
