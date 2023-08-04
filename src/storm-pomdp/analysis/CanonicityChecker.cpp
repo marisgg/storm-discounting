@@ -27,7 +27,14 @@ namespace storm {
                     uint_fast64_t observation = pomdp->getObservation(state);
                     auto labels = std::vector<std::string>();
                     for (auto row = rowGroupIndices[state]; row < pomdp->getTransitionMatrix().getRowCount() && row < rowGroupIndices[state + 1]; row++) {
-                        labels.push_back(choiceLabeling.getLabelsOfChoice(row));
+                        auto choiceLabelSet = choiceLabeling.getLabelsOfChoice(row);
+                        if (choiceLabelSet.empty()) {
+                            labels.push_back("");
+                        } else if (choiceLabelSet.size() == 1) {
+                            labels.push_back(*(choiceLabeling.getLabelsOfChoice(row).begin()));
+                        } else {
+                            STORM_LOG_ERROR("There are multiple action labels for the same action");
+                        }
                     }
 
                     if (observationsToActions.find(observation) == observationsToActions.end()) {
@@ -74,6 +81,12 @@ namespace storm {
                 }
                 return true;
             }
+
+            template
+            class CanonicityChecker<double>;
+
+            template
+            class CanonicityChecker<storm::RationalNumber>;
         }
     }
 }
