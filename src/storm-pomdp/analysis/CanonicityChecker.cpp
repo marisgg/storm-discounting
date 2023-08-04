@@ -4,8 +4,11 @@ namespace storm {
         namespace analysis {
 
             template<typename ValueType>
-            bool CanonicityChecker<ValueType>::check(models::sparse::Pomdp<ValueType> pomdp) {
-                if (pomdp.hasChoiceLabeling()) {
+            CanonicityChecker<ValueType>::CanonicityChecker() {}
+
+            template<typename ValueType>
+            bool CanonicityChecker<ValueType>::check(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp) {
+                if (pomdp->hasChoiceLabeling()) {
                     return checkWithLabels(pomdp);
                 } else {
                     return checkWithoutLabels(pomdp);
@@ -13,17 +16,17 @@ namespace storm {
             }
 
             template<typename ValueType>
-            bool CanonicityChecker<ValueType>::checkWithLabels(models::sparse::Pomdp<ValueType> pomdp) {
+            bool CanonicityChecker<ValueType>::checkWithLabels(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp) {
                 auto observationsToActions = std::map<uint_fast64_t, std::vector<std::string>>();
-                auto rowGroupIndices = pomdp.getTransitionMatrix().getRowGroupIndices();
-                auto choiceLabeling = pomdp.getChoiceLabeling();
-                auto numberOfStates = pomdp.getNumberOfStates();
+                auto rowGroupIndices = pomdp->getTransitionMatrix().getRowGroupIndices();
+                auto choiceLabeling = pomdp->getChoiceLabeling();
+                auto numberOfStates = pomdp->getNumberOfStates();
 
                 for (uint_fast64_t state = 0; state < numberOfStates; state++){
                     // Grab observation and collect labels
-                    uint_fast64_t observation = pomdp.getObservation(state);
+                    uint_fast64_t observation = pomdp->getObservation(state);
                     auto labels = std::vector<std::string>();
-                    for (auto row = rowGroupIndices[state]; row < pomdp.getTransitionMatrix().getRowCount() && row < rowGroupIndices[state + 1]; row++) {
+                    for (auto row = rowGroupIndices[state]; row < pomdp->getTransitionMatrix().getRowCount() && row < rowGroupIndices[state + 1]; row++) {
                         labels.push_back(choiceLabeling.getLabelsOfChoice(row));
                     }
 
@@ -46,19 +49,19 @@ namespace storm {
             }
 
             template<typename ValueType>
-            bool CanonicityChecker<ValueType>::checkWithoutLabels(models::sparse::Pomdp<ValueType> pomdp) {
+            bool CanonicityChecker<ValueType>::checkWithoutLabels(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp) {
                 auto observationsToActionNumber = std::map<uint_fast64_t, uint_fast64_t>();
-                auto rowGroupIndices = pomdp.getTransitionMatrix().getRowGroupIndices();
-                auto numberOfStates = pomdp.getNumberOfStates();
+                auto rowGroupIndices = pomdp->getTransitionMatrix().getRowGroupIndices();
+                auto numberOfStates = pomdp->getNumberOfStates();
 
                 for (uint_fast64_t state = 0; state < numberOfStates; state++){
                     // Grab observation and calculate number of actions
-                    uint_fast64_t observation = pomdp.getObservation(state);
+                    uint_fast64_t observation = pomdp->getObservation(state);
                     uint_fast64_t numberOfActions;
                     if (state < numberOfStates - 1) {
                         numberOfActions = rowGroupIndices[state + 1] - rowGroupIndices[state];
                     } else {
-                        numberOfActions = pomdp.getTransitionMatrix().getRowCount() - rowGroupIndices[state];
+                        numberOfActions = pomdp->getTransitionMatrix().getRowCount() - rowGroupIndices[state];
                     }
 
                     if (observationsToActionNumber.find(observation) == observationsToActionNumber.end()){
@@ -71,7 +74,6 @@ namespace storm {
                 }
                 return true;
             }
-
         }
     }
 }

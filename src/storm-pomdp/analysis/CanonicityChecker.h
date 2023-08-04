@@ -6,16 +6,18 @@ namespace storm {
         namespace analysis {
         template<typename ValueType> class CanonicityChecker {
             public:
-                /*!
+                 CanonicityChecker();
+
+                 /*!
                  * Checks if a given POMDP is canonic
                  * @param pomdp The POMDP to consider
                  * @return true iff the POMDP is canonic
                  */
-                bool check(storm::models::sparse::Pomdp<ValueType> pomdp);
+                bool check(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp);
 
             private:
-                bool checkWithLabels(storm::models::sparse::Pomdp<ValueType> pomdp);
-                bool checkWithoutLabels(storm::models::sparse::Pomdp<ValueType> pomdp);
+                bool checkWithLabels(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp);
+                bool checkWithoutLabels(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp);
             };
         }
     }
