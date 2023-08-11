@@ -1,14 +1,6 @@
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.15)
 
-cmake_policy(VERSION 3.2)
-
- set(CMAKE_CXX_STANDARD 17)
-
-# When searching for packages, we would like to first search in prefixes specified by <PackageName>_ROOT.
-# However, this behavior is only supported since CMake 3.12.
-if(POLICY CMP0074)
-	cmake_policy(SET CMP0074 NEW)
-endif()
+set(CMAKE_CXX_STANDARD 17)
 
 # Set project name
 project (storm CXX C)
@@ -46,6 +38,7 @@ MARK_AS_ADVANCED(STORM_FORCE_POPCNT)
 option(USE_BOOST_STATIC_LIBRARIES "Sets whether the Boost libraries should be linked statically." OFF)
 option(STORM_USE_INTELTBB "Sets whether the Intel TBB libraries should be used." OFF)
 option(STORM_USE_GUROBI "Sets whether Gurobi should be used." OFF)
+option(STORM_USE_SOPLEX "Sets whether Soplex should be used." OFF)
 set(STORM_CARL_DIR_HINT "" CACHE STRING "A hint where the preferred CArL version can be found. If CArL cannot be found there, it is searched in the OS's default paths.")
 option(STORM_FORCE_SHIPPED_CARL "Sets whether the shipped version of carl is to be used no matter whether carl is found or not." OFF)
 MARK_AS_ADVANCED(STORM_FORCE_SHIPPED_CARL)
@@ -87,6 +80,9 @@ set(USE_XERCESC ${XML_SUPPORT})
 mark_as_advanced(USE_XERCESC)
 option(STORM_COMPILE_WITH_ADDRESS_SANITIZER "Sets whether to compile with AddressSanitizer enabled" OFF)
 option(STORM_COMPILE_WITH_ALL_SANITIZERS "Sets whether to compile with all sanitizers enabled" OFF)
+option(STORM_COMPILE_WITH_COMPILATION_PROFILING "Compile with output to profile compilation process" OFF)
+MARK_AS_ADVANCED(STORM_COMPILE_WITH_COMPILATION_PROFILING)
+
 
 if (STORM_COMPILE_WITH_ALL_SANITIZERS)
     set(STORM_COMPILE_WITH_ADDRESS_SANITIZER ON)
@@ -187,7 +183,7 @@ set(SHIPPED_CARL_USE_GINAC ON)
 # Detect Apple Silicon and adjust settings
 if(APPLE AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES arm64)
 	message(STATUS "Storm - Detected that target system uses Apple Silicon.")
-	message(WARNING "Storm currently does not compile natively on Apple Silicon! Please consider building Storm using Rosetta 2. For more information visit https://www.stormchecker.org/documentation/obtain-storm/apple-silicon.html")
+	message(WARNING "Compiling natively on Apple Silicon is experimental. Please report issues to support@stormchecker.org. For more information visit https://www.stormchecker.org/documentation/obtain-storm/apple-silicon.html")
 	set(APPLE_SILICON 1)
 	if(STORM_USE_CLN_EA OR STORM_USE_CLN_RF)
 		message(WARNING "CLN and GiNaC are currently not supported on Apple Silicon-based architectures. Disabling Storm and carl usage of the libraries.")
@@ -346,6 +342,15 @@ endif()
 # In release mode, we turn on even more optimizations if we do not have to provide a portable binary.
 if (NOT STORM_PORTABLE AND (NOT APPLE_SILICON OR (STORM_COMPILER_CLANG AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 15.0)))
 	set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+endif()
+
+if (STORM_COMPILE_WITH_COMPILATION_PROFILING)
+	if (CLANG)
+		# Allow profiling of compilation times,
+		# outputs json with chromium-tracing information along every object file (open in chrome://tracing/).
+		# overhead is very limited
+		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-trace")
+	endif()
 endif()
 
 if (STORM_DEVELOPER)
