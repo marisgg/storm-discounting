@@ -5,15 +5,15 @@
 
 namespace storm {
 namespace pomdp {
-namespace exporter{
-
+namespace exporter {
 
 /*!
  * TODO
  */
 template<typename ValueType>
-void exportPomdpToJulia(std::ostream& os, std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, double discount, storm::logic::Formula const& formula);
+void exportPomdpToJulia(std::ostream& os, std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, double discount,
+                        storm::logic::Formula const& formula);
 
-}
-}
-}
+}  // namespace exporter
+}  // namespace pomdp
+}  // namespace storm

@@ -12,7 +12,6 @@ namespace modules {
  */
 class ToJuliaSettings : public ModuleSettings {
    public:
-
     ToJuliaSettings();
 
     virtual ~ToJuliaSettings() = default;
@@ -30,7 +29,6 @@ class ToJuliaSettings : public ModuleSettings {
     static const std::string moduleName;
 };
 
-} // namespace modules
-} // namespace settings
-} // namespace storm
-
+}  // namespace modules
+}  // namespace settings
+}  // namespace storm
