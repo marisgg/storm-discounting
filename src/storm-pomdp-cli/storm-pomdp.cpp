@@ -421,16 +421,8 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
         if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula()) {
             auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
             auto unfoldedStuff = unfolder.unfold(pomdp, *formula.get());
-            /*std::cout << "\nORIGINAL POMDP:\n";
-            pomdp->writeDotToStream(std::cout);
-            std::cout << "\nORIGINAL FORMULA:\n";
-            formula->writeToStream(std::cout);*/
-            pomdp = unfoldedStuff.first;
-            formula = std::make_shared<storm::logic::ProbabilityOperatorFormula const>(unfoldedStuff.second);
-            /*std::cout << "\nUNFOLDED POMDP:\n";
-            pomdp->writeDotToStream(std::cout);
-            std::cout << "\nNEW FORMULA:\n";
-            formula->writeToStream(std::cout);*/
+            pomdp = unfoldedStuff.pomdp;
+            formula = std::make_shared<storm::logic::ProbabilityOperatorFormula const>(unfoldedStuff.formula);
         }
         auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);
         STORM_LOG_THROW(!formulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException,

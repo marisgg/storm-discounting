@@ -15,8 +15,13 @@
 namespace storm {
 namespace transformer {
 template<typename ValueType>
-std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic::ProbabilityOperatorFormula> BoundUnfolder<ValueType>::unfold(
-    std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPOMDP, const storm::logic::Formula& formula) {
+BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unfold(
+    std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, const storm::logic::Formula& formula) {
+    /*std::cout << "\nORIGINAL POMDP:\n";
+    originalPomdp->writeDotToStream(std::cout);
+    std::cout << "\nORIGINAL FORMULA:\n";
+    formula->writeToStream(std::cout);*/
+
     // Check formula
     STORM_LOG_THROW(formula.isProbabilityOperatorFormula() && formula.asOperatorFormula().getSubformula().isBoundedUntilFormula() &&
                         formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getLeftSubformula().isTrueFormula(),
@@ -26,17 +31,17 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     auto temp = std::set<std::string>();
     formula.gatherReferencedRewardModels(temp);
     assert(temp.size() == 1);
-    auto rewModel = originalPOMDP->getRewardModel(*temp.begin());
+    auto rewModel = originalPomdp->getRewardModel(*temp.begin());
     STORM_LOG_THROW(rewModel.hasStateActionRewards(), storm::exceptions::NotSupportedException, "Only state action rewards are currently supported.");
 
     // Grab bound
     ValueType bound = getBound(formula);
 
     // Grab matrix (mostly for coding convenience to just have it in a variable here)
-    auto& ogMatrix = originalPOMDP->getTransitionMatrix();
+    auto& ogMatrix = originalPomdp->getTransitionMatrix();
 
     // Grab goal states
-    auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*originalPOMDP, formula);
+    auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*originalPomdp, formula);
     auto targetStates = formulaInfo.getTargetStates().states;
 
     // Transformation information + variables (remove non-necessary ones later)
@@ -65,8 +70,8 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     choiceCount++;
 
     // Create init state of unfolded model
-    assert(originalPOMDP->getInitialStates().getNumberOfSetBits() == 1);
-    uint_fast64_t initState = originalPOMDP->getInitialStates().getNextSetIndex(0);
+    assert(originalPomdp->getInitialStates().getNumberOfSetBits() == 1);
+    uint_fast64_t initState = originalPomdp->getInitialStates().getNextSetIndex(0);
     auto initEpochState = std::make_pair(initState, bound);
     processingQ.push(initEpochState);
     auto numberOfActions = ogMatrix.getRowGroupSize(initState);
@@ -138,10 +143,10 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     }
 
     // Observations
-    observations.push_back(originalPOMDP->getNrObservations());      // =)
-    observations.push_back(originalPOMDP->getNrObservations() + 1);  // =(
+    observations.push_back(originalPomdp->getNrObservations());      // =)
+    observations.push_back(originalPomdp->getNrObservations() + 1);  // =(
     for (uint_fast64_t i = 2; i < nextNewStateIndex; i++) {
-        observations.push_back(originalPOMDP->getObservation(newStateToStateEpoch[i].first));
+        observations.push_back(originalPomdp->getObservation(newStateToStateEpoch[i].first));
     }
 
     // State labeling: single label for =)
@@ -172,11 +177,11 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     components.observabilityClasses = observations;
 
     // Optional copy of choice labels
-    if (originalPOMDP->hasChoiceLabeling()){
+    if (originalPomdp->hasChoiceLabeling()){
         auto newChoiceLabeling = storm::models::sparse::ChoiceLabeling(choiceCount);
-        auto oldChoiceLabeling = originalPOMDP->getChoiceLabeling();
+        auto oldChoiceLabeling = originalPomdp->getChoiceLabeling();
         auto newRowGroupIndices = components.transitionMatrix.getRowGroupIndices();
-        auto oldRowGroupIndices = originalPOMDP->getTransitionMatrix().getRowGroupIndices();
+        auto oldRowGroupIndices = originalPomdp->getTransitionMatrix().getRowGroupIndices();
 
         //assert (unfoldedTransitionMatrix.getRowGroupSize(0) + unfoldedTransitionMatrix.getRowGroupSize(1) == newRowGroupIndices[2]);
 
@@ -198,7 +203,7 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
 
     // Build pomdp
     auto unfoldedPomdp = storm::models::sparse::Pomdp<ValueType>(std::move(components));
-    if (originalPOMDP->isCanonic()){
+    if (originalPomdp->isCanonic()){
         unfoldedPomdp.setIsCanonic();
     }
 
@@ -207,7 +212,13 @@ std::pair<std::shared_ptr<storm::models::sparse::Pomdp<ValueType>>, storm::logic
     std::vector<storm::jani::Property> propertyVector = storm::api::parseProperties(propertyString);
     storm::logic::ProbabilityOperatorFormula newFormula = storm::api::extractFormulasFromProperties(propertyVector).front()->asProbabilityOperatorFormula();
 
-    return std::make_pair(std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)), newFormula);
+    /*std::cout << "\nUNFOLDED POMDP:\n";
+    pomdp->writeDotToStream(std::cout);
+    std::cout << "\nNEW FORMULA:\n";
+    newFormula->writeToStream(std::cout);*/
+
+    // Put result together
+    return UnfoldingResult(std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)), newFormula, std::move(stateEpochToNewState), std::move(newStateToStateEpoch));
 }
 
 template<>
