@@ -15,7 +15,7 @@
 namespace storm {
 namespace transformer {
 template<typename ValueType>
-BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unfold(
+typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unfold(
     std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, const storm::logic::Formula& formula) {
     /*std::cout << "\nORIGINAL POMDP:\n";
     originalPomdp->writeDotToStream(std::cout);
@@ -230,6 +230,7 @@ double BoundUnfolder<double>::getBound(const storm::logic::Formula& formula) {
 
 template<>
 storm::RationalNumber BoundUnfolder<storm::RationalNumber>::getBound(const storm::logic::Formula& formula) {
+    // TODO bound currently always has numericalType and will cause assert to fail. Conversion int(in formula) -> numerical(in bound as parsed) -> rational(here) may lead to inaccuracies
     STORM_LOG_THROW(formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().hasRationalType(), storm::exceptions::NotSupportedException,
                     "ValueType of model and bound ValueType not matching");
     return formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getUpperBound().evaluateAsRational();
