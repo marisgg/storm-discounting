@@ -327,6 +327,11 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             overApproxBeliefManager->setRewardModel(rewardModelName);
         }
         overApproximation = std::make_shared<ExplorerType>(overApproxBeliefManager, trivialPOMDPBounds, storm::builder::ExplorationHeuristic::BreadthFirst);
+        overApproximation->setBeliefLabeling(options.beliefLabeling);
+        overApproximation->setExportDot(options.exportBeliefMdpAsDot);
+        if (options.exportBeliefMdpAsDot) {
+            overApproximation->setExportDotFileName(options.dotOutputFileName.value());
+        }
         overApproxHeuristicPar.gapThreshold = options.gapThresholdInit;
         overApproxHeuristicPar.observationThreshold = options.obsThresholdInit;
         overApproxHeuristicPar.sizeThreshold = options.sizeThresholdInit == 0 ? std::numeric_limits<uint64_t>::max() : options.sizeThresholdInit;
@@ -355,6 +360,11 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             underApproxBeliefManager->setRewardModel(rewardModelName);
         }
         underApproximation = std::make_shared<ExplorerType>(underApproxBeliefManager, trivialPOMDPBounds, options.explorationHeuristic);
+        underApproximation->setBeliefLabeling(options.beliefLabeling);
+        underApproximation->setExportDot(options.exportBeliefMdpAsDot);
+        if (options.exportBeliefMdpAsDot) {
+            underApproximation->setExportDotFileName(options.dotOutputFileName.value());
+        }
         underApproxHeuristicPar.gapThreshold = options.gapThresholdInit;
         underApproxHeuristicPar.optimalChoiceValueEpsilon = options.optimalChoiceValueThresholdInit;
         underApproxHeuristicPar.sizeThreshold = options.sizeThresholdInit;

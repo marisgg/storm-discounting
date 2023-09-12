@@ -14,6 +14,7 @@
 #include "storm/utility/constants.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/vector.h"
+#include "api/export.h"
 
 namespace storm {
 namespace builder {
@@ -621,6 +622,20 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::finishExploration() {
         }
     }
 
+    if (beliefLabeling) {
+        // TODO implement: add beliefs to labeling
+        for (uint64_t state = 0; state < getCurrentNumberOfMdpStates(); ++state) {
+            auto beliefID = mdpStateToBeliefIdMap[state];
+            if (beliefID != beliefManager->noId()) {
+                auto beliefString = beliefManager->toString(beliefID);
+                if (!mdpLabeling.containsLabel(beliefString)) {
+                    mdpLabeling.addLabel(beliefString);
+                }
+                mdpLabeling.addLabelToState(beliefString, state);
+            }
+        }
+    }
+
     // Create a standard reward model (if rewards are available)
     std::unordered_map<std::string, storm::models::sparse::StandardRewardModel<ValueType>> mdpRewardModels;
     if (!mdpActionRewards.empty()) {
@@ -673,6 +688,14 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::finishExploration() {
 
     // Create the final model.
     exploredMdp = std::make_shared<storm::models::sparse::Mdp<ValueType>>(std::move(modelComponents));
+
+    // Optional Dot Output
+    if (exportDot) {
+        STORM_LOG_ASSERT(exportDotFileName, "No file name for dot export given.");
+        std::shared_ptr<storm::models::sparse::Model<ValueType>> modelPtr = exploredMdp->template as<typename storm::models::sparse::Model<ValueType>>();
+        storm::api::exportSparseModelAsDot(modelPtr, exportDotFileName.value());
+    }
+
     status = Status::ModelFinished;
     STORM_LOG_DEBUG("Explored Mdp with " << exploredMdp->getNumberOfStates() << " states (" << clippedStates.getNumberOfSetBits()
                                          << " of which were clipped and " << truncatedStates.getNumberOfSetBits() - clippedStates.getNumberOfSetBits()
@@ -1386,6 +1409,21 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::adjustActions(uint64_t total
         }
         return;
     }
+}
+
+template<typename PomdpType, typename BeliefValueType>
+void BeliefMdpExplorer<PomdpType, BeliefValueType>::setBeliefLabeling(bool value) {
+    this->beliefLabeling = value;
+}
+
+template<typename PomdpType, typename BeliefValueType>
+void BeliefMdpExplorer<PomdpType, BeliefValueType>::setExportDot(bool value) {
+    exportDot = value;
+}
+
+template<typename PomdpType, typename BeliefValueType>
+void BeliefMdpExplorer<PomdpType, BeliefValueType>::setExportDotFileName(std::string fileName) {
+    exportDotFileName = fileName;
 }
 
 template class BeliefMdpExplorer<storm::models::sparse::Pomdp<double>>;

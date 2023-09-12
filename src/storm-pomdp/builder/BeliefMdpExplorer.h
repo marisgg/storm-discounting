@@ -255,6 +255,12 @@ class BeliefMdpExplorer {
 
     std::vector<BeliefValueType> computeProductWithSparseMatrix(BeliefId const &beliefId, storm::storage::SparseMatrix<BeliefValueType> &matrix) const;
 
+    void setBeliefLabeling(bool value);
+
+    void setExportDot(bool value);
+
+    void setExportDotFileName(std::string fileName);
+
    private:
     MdpStateType noState() const;
 
@@ -273,6 +279,11 @@ class BeliefMdpExplorer {
     void insertValueHints(ValueType const &lowerBound, ValueType const &upperBound);
 
     MdpStateType getOrAddMdpState(BeliefId const &beliefId, ValueType const &transitionValue = storm::utility::zero<ValueType>());
+
+    // Options
+    bool beliefLabeling = false;
+    bool exportDot = false;
+    std::optional<std::string> exportDotFileName;
 
     // Belief state related information
     std::shared_ptr<BeliefManagerType> beliefManager;

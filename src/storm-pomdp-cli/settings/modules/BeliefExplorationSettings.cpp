@@ -27,6 +27,8 @@ const std::string triangulationModeOption = "triangulationmode";
 const std::string clippingOption = "use-clipping";
 const std::string cutZeroGapOption = "cut-zero-gap";
 const std::string stateEliminationCutoffOption = "state-elimination-cutoff";
+const std::string beliefLabelingOption = "belief-labeling";
+const std::string exportBeliefMdpAsDotOption = "export-dot-belief-mdp";
 
 BeliefExplorationSettings::BeliefExplorationSettings() : ModuleSettings(moduleName) {
     this->addOption(
@@ -151,14 +153,30 @@ BeliefExplorationSettings::BeliefExplorationSettings() : ModuleSettings(moduleNa
                                          .addValidatorString(storm::settings::ArgumentValidatorFactory::createMultipleChoiceValidator({"dynamic", "static"}))
                                          .build())
                         .build());
+
     this->addOption(
-        storm::settings::OptionBuilder(moduleName, clippingOption, false, "If this is set, unfolding will use  (grid) clipping instead of cut-offs only.")
+            storm::settings::OptionBuilder(moduleName, clippingOption, false, "If this is set, unfolding will use  (grid) clipping instead of cut-offs only.")
             .build());
+
     this->addOption(
-        storm::settings::OptionBuilder(moduleName, cutZeroGapOption, false, "Cut beliefs where the gap between over- and underapproximation is 0.").build());
-    this->addOption(storm::settings::OptionBuilder(moduleName, stateEliminationCutoffOption, false,
-                                                   "If this is set, an additional unfolding step for cut-off beliefs is performed.")
-                        .build());
+            storm::settings::OptionBuilder(moduleName, cutZeroGapOption, false, "Cut beliefs where the gap between over- and underapproximation is 0.")
+            .build());
+
+    this->addOption(
+            storm::settings::OptionBuilder(moduleName, stateEliminationCutoffOption, false, "If this is set, an additional unfolding step for cut-off beliefs is performed.")
+            .build());
+
+    this->addOption(
+            storm::settings::OptionBuilder(moduleName, beliefLabelingOption, false, "Label states of the belief MDP with their corresponding belief")
+            .build());
+
+    this->addOption(
+            storm::settings::OptionBuilder(moduleName, exportBeliefMdpAsDotOption, false,
+                                           "If given, the created belief MDP will be written to the specified file in the dot format.")
+                    .setIsAdvanced()
+                    .addArgument(
+                            storm::settings::ArgumentBuilder::createStringArgument("filename", "The name of the file to which the belief MDP is to be written.").build())
+            .build());
 }
 
 bool BeliefExplorationSettings::isRefineSet() const {
@@ -249,6 +267,18 @@ bool BeliefExplorationSettings::isCutZeroGapSet() const {
     return this->getOption(cutZeroGapOption).getHasOptionBeenSet();
 }
 
+bool BeliefExplorationSettings::isBeliefLabelingSet() const {
+    return this->getOption(beliefLabelingOption).getHasOptionBeenSet();
+}
+
+bool BeliefExplorationSettings::isExportBeliefMdpAsDotSet() const {
+    return this->getOption(exportBeliefMdpAsDotOption).getHasOptionBeenSet();
+}
+
+std::string BeliefExplorationSettings::getDotFileName() const {
+        return this->getOption(exportBeliefMdpAsDotOption).getArgumentByName("filename").getValueAsString();
+    }
+
 template<typename ValueType>
 void BeliefExplorationSettings::setValuesInOptionsStruct(storm::pomdp::modelchecker::BeliefExplorationPomdpModelCheckerOptions<ValueType>& options) const {
     options.refine = isRefineSet();
@@ -282,6 +312,11 @@ void BeliefExplorationSettings::setValuesInOptionsStruct(storm::pomdp::modelchec
     }
     options.dynamicTriangulation = isDynamicTriangulationModeSet();
     options.cutZeroGap = isCutZeroGapSet();
+    options.beliefLabeling = isBeliefLabelingSet();
+    options.exportBeliefMdpAsDot= isExportBeliefMdpAsDotSet();
+    if (isExportBeliefMdpAsDotSet()) {
+        options.dotOutputFileName =  getDotFileName();
+    }
 }
 
 template void BeliefExplorationSettings::setValuesInOptionsStruct<double>(
