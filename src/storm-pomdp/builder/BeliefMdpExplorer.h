@@ -280,6 +280,10 @@ class BeliefMdpExplorer {
 
     MdpStateType getOrAddMdpState(BeliefId const &beliefId, ValueType const &transitionValue = storm::utility::zero<ValueType>());
 
+    void writeBeliefJsonStringToStream(std::ostream& str);
+
+    void exportBeliefsAsJson(std::string const& fileName);
+
     // Options
     bool beliefLabeling = false;
     bool exportDot = false;

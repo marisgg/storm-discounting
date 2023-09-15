@@ -282,6 +282,25 @@ std::string BeliefManager<PomdpType, BeliefValueType, StateType>::toString(Belie
 }
 
 template<typename PomdpType, typename BeliefValueType, typename StateType>
+std::string BeliefManager<PomdpType, BeliefValueType, StateType>::toJsonListString(BeliefId const &beliefId, uint_fast64_t indentationLevel) const {
+    auto belief = getBelief(beliefId);
+    std::stringstream str;
+    bool first = true;
+    for (auto const &entry : belief) {
+        if (first) {
+            first = false;
+        } else {
+            str << ",\n";
+        }
+        str << std::string(indentationLevel, '\t') << "{\n";
+        str << std::string(indentationLevel + 1, '\t') << "\"pomdp_state\": " << entry.first << ",\n";
+        str << std::string(indentationLevel + 1, '\t') << "\"probability\": " << std::setprecision(std::numeric_limits<double>::max_digits10 + 1) << entry.second << ",\n";
+        str << std::string(indentationLevel, '\t') << "}";
+    }
+    return str.str();
+}
+
+template<typename PomdpType, typename BeliefValueType, typename StateType>
 bool BeliefManager<PomdpType, BeliefValueType, StateType>::isEqual(BeliefType const &first, BeliefType const &second) const {
     if (first.size() != second.size()) {
         return false;

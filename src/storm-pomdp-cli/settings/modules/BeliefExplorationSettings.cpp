@@ -167,7 +167,7 @@ BeliefExplorationSettings::BeliefExplorationSettings() : ModuleSettings(moduleNa
             .build());
 
     this->addOption(
-            storm::settings::OptionBuilder(moduleName, beliefLabelingOption, false, "Label states of the belief MDP with their corresponding belief")
+            storm::settings::OptionBuilder(moduleName, beliefLabelingOption, false, "If this is set, the .dot output will additionally generate a .json file listing the beliefs represented by the belief-mdp states")
             .build());
 
     this->addOption(
