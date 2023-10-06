@@ -71,7 +71,7 @@ class NondeterministicModel : public Model<ValueType, RewardModelType> {
                                   storm::storage::BitVector const* subsystem = nullptr, std::vector<ValueType> const* firstValue = nullptr,
                                   std::vector<ValueType> const* secondValue = nullptr, std::vector<uint_fast64_t> const* stateColoring = nullptr,
                                   std::vector<std::string> const* colors = nullptr, std::vector<uint_fast64_t>* scheduler = nullptr,
-                                  bool finalizeOutput = true) const override;
+                                  bool finalizeOutput = true, bool shortenProbabilities = false) const override;
 };
 
 }  // namespace sparse

@@ -678,8 +678,7 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::finishExploration() {
     // Optional Dot Output
     if (exportDot) {
         STORM_LOG_ASSERT(exportDotFileName, "No file name for dot export given.");
-        std::shared_ptr<storm::models::sparse::Model<ValueType>> modelPtr = exploredMdp->template as<typename storm::models::sparse::Model<ValueType>>();
-        storm::api::exportSparseModelAsDot(modelPtr, exportDotFileName.value() + ".dot");
+        exportBeliefMdpToDot(exportDotFileName.value() + ".dot", true);
         if (beliefLabeling) {
             exportBeliefsAsJson(exportDotFileName.value() + ".json");
         }
@@ -1439,6 +1438,14 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::exportBeliefsAsJson(std::str
     std::ofstream stream;
     storm::utility::openFile(fileName, stream);
     writeBeliefJsonStringToStream(stream);
+    storm::utility::closeFile(stream);
+}
+
+template<typename PomdpType, typename BeliefValueType>
+void BeliefMdpExplorer<PomdpType, BeliefValueType>::exportBeliefMdpToDot(std::string const& fileName, bool shorten) {
+    std::ofstream stream;
+    storm::utility::openFile(fileName, stream);
+    exploredMdp->writeDotToStream(stream, 30, true, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true, shorten);
     storm::utility::closeFile(stream);
 }
 

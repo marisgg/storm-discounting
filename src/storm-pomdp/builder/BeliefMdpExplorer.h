@@ -284,6 +284,8 @@ class BeliefMdpExplorer {
 
     void exportBeliefsAsJson(std::string const& fileName);
 
+    void exportBeliefMdpToDot(std::string const& fileName, bool shorten);
+
     // Options
     bool beliefLabeling = false;
     bool exportDot = false;
