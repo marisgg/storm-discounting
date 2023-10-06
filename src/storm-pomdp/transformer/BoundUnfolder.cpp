@@ -101,10 +101,10 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
                         // Successor is goal state with epoch != bottom: Transition to =)
                         if (transitions[stateEpochToNewState[currentEpochState]][actionIndex].find(0) == transitions[stateEpochToNewState[currentEpochState]][actionIndex].end()){
                             transitions[stateEpochToNewState[currentEpochState]][actionIndex][0] = entry.getValue();
+                            entryCount++;
                         } else {
                             transitions[stateEpochToNewState[currentEpochState]][actionIndex][0] += entry.getValue();
                         }
-                        entryCount++;
                     } else {
                         // Successor with epoch != bottom but not a goal state
                         ValueType epoch = currentEpochState.second - rewModel.getStateActionReward(row);
@@ -132,11 +132,10 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
                     // TODO add case of non-goal sink states here sometime
                     if (transitions[stateEpochToNewState[currentEpochState]][actionIndex].find(1) == transitions[stateEpochToNewState[currentEpochState]][actionIndex].end()){
                         transitions[stateEpochToNewState[currentEpochState]][actionIndex][1] = entry.getValue();
+                        entryCount++;
                     } else {
                         transitions[stateEpochToNewState[currentEpochState]][actionIndex][1] += entry.getValue();
                     }
-
-                    entryCount++;
                 }
             }
         }
