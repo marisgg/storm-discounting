@@ -145,6 +145,10 @@ bool Formula::isCumulativeRewardFormula() const {
     return false;
 }
 
+bool Formula::isDiscountedCumulativeRewardFormula() const {
+    return false;
+}
+
 bool Formula::isInstantaneousRewardFormula() const {
     return false;
 }
@@ -158,6 +162,10 @@ bool Formula::isLongRunAverageRewardFormula() const {
 }
 
 bool Formula::isTotalRewardFormula() const {
+    return false;
+}
+
+bool Formula::isDiscountedTotalRewardFormula() const {
     return false;
 }
 
