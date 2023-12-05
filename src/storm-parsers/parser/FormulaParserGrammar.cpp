@@ -16,6 +16,10 @@ FormulaParserGrammar::FormulaParserGrammar(std::shared_ptr<storm::expressions::E
     initialize();
 }
 
+qi::symbols<char, storm::expressions::Expression> const& FormulaParserGrammar::getIdentifiers() const {
+    return identifiers_;
+}
+
 void FormulaParserGrammar::initialize() {
     // Register all variables so we can parse them in the expressions.
     for (auto variableTypePair : *constManager) {
@@ -133,8 +137,8 @@ void FormulaParserGrammar::initialize() {
     timeBoundReference.name("time bound reference");
     timeBound = ((timeBoundReference >> qi::lit("[")) > expressionParser > qi::lit(",") > expressionParser >
                  qi::lit("]"))[qi::_val = phoenix::bind(&FormulaParserGrammar::createTimeBoundFromInterval, phoenix::ref(*this), qi::_2, qi::_3, qi::_1)] |
-                (timeBoundReference >> (qi::lit("<=")[qi::_a = true, qi::_b = false] | qi::lit("<")[qi::_a = true, qi::_b = true] |
-                                        qi::lit(">=")[qi::_a = false, qi::_b = false] | qi::lit(">")[qi::_a = false, qi::_b = true]) >>
+                (timeBoundReference >> (qi::lit("<=")[(qi::_a = true, qi::_b = false)] | qi::lit("<")[(qi::_a = true, qi::_b = true)] |
+                                        qi::lit(">=")[(qi::_a = false, qi::_b = false)] | qi::lit(">")[(qi::_a = false, qi::_b = true)]) >>
                  expressionParser)[qi::_val = phoenix::bind(&FormulaParserGrammar::createTimeBoundFromSingleBound, phoenix::ref(*this), qi::_2, qi::_a, qi::_b,
                                                             qi::_1)] |
                 (timeBoundReference >> qi::lit("=") >>
