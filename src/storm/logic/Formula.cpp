@@ -442,6 +442,21 @@ TotalRewardFormula const& Formula::asTotalRewardFormula() const {
     return dynamic_cast<TotalRewardFormula const&>(*this);
 }
 
+DiscountedCumulativeRewardFormula& Formula::asDiscountedCumulativeRewardFormula() {
+    return dynamic_cast<DiscountedCumulativeRewardFormula&>(*this);
+}
+
+DiscountedCumulativeRewardFormula const& Formula::asDiscountedCumulativeRewardFormula() const {
+    return dynamic_cast<DiscountedCumulativeRewardFormula const&>(*this);
+}
+
+DiscountedTotalRewardFormula& Formula::asDiscountedTotalRewardFormula() {
+    return dynamic_cast<DiscountedTotalRewardFormula&>(*this);
+}
+DiscountedTotalRewardFormula const& Formula::asDiscountedTotalRewardFormula() const {
+    return dynamic_cast<DiscountedTotalRewardFormula const&>(*this);
+}
+
 InstantaneousRewardFormula& Formula::asInstantaneousRewardFormula() {
     return dynamic_cast<InstantaneousRewardFormula&>(*this);
 }

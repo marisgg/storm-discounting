@@ -85,6 +85,11 @@ class AbstractModelChecker {
                                                              CheckTask<storm::logic::TotalRewardFormula, ValueType> const& checkTask);
     virtual std::unique_ptr<CheckResult> computeLongRunAverageRewards(Environment const& env, storm::logic::RewardMeasureType rewardMeasureType,
                                                                       CheckTask<storm::logic::LongRunAverageRewardFormula, ValueType> const& checkTask);
+    virtual std::unique_ptr<CheckResult> computeDiscountedCumulativeRewards(
+        Environment const& env, storm::logic::RewardMeasureType rewardMeasureType,
+        CheckTask<storm::logic::DiscountedCumulativeRewardFormula, ValueType> const& checkTask);
+    virtual std::unique_ptr<CheckResult> computeDiscountedTotalRewards(Environment const& env, storm::logic::RewardMeasureType rewardMeasureType,
+                                                                       CheckTask<storm::logic::DiscountedTotalRewardFormula, ValueType> const& checkTask);
 
     // The methods to compute the long-run average probabilities and timing measures.
     virtual std::unique_ptr<CheckResult> computeLongRunAverageProbabilities(Environment const& env,

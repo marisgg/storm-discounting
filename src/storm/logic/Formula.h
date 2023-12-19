@@ -197,6 +197,12 @@ class Formula : public std::enable_shared_from_this<Formula> {
     TotalRewardFormula& asTotalRewardFormula();
     TotalRewardFormula const& asTotalRewardFormula() const;
 
+    DiscountedCumulativeRewardFormula& asDiscountedCumulativeRewardFormula();
+    DiscountedCumulativeRewardFormula const& asDiscountedCumulativeRewardFormula() const;
+
+    DiscountedTotalRewardFormula& asDiscountedTotalRewardFormula();
+    DiscountedTotalRewardFormula const& asDiscountedTotalRewardFormula() const;
+
     InstantaneousRewardFormula& asInstantaneousRewardFormula();
     InstantaneousRewardFormula const& asInstantaneousRewardFormula() const;
 

@@ -15,6 +15,7 @@
 
 #include "storm/models/sparse/StandardRewardModel.h"
 
+#include "storm/modelchecker/helper/DiscountingHelper.h"
 #include "storm/modelchecker/helper/finitehorizon/SparseNondeterministicStepBoundedHorizonHelper.h"
 #include "storm/modelchecker/helper/infinitehorizon/SparseNondeterministicInfiniteHorizonHelper.h"
 #include "storm/modelchecker/helper/ltl/SparseLTLHelper.h"
@@ -57,7 +58,9 @@ bool SparseMdpPrctlModelChecker<SparseMdpModelType>::canHandleStatic(CheckTask<s
                                  .setMultiDimensionalCumulativeRewardFormulasAllowed(true)
                                  .setTimeOperatorsAllowed(true)
                                  .setReachbilityTimeFormulasAllowed(true)
-                                 .setRewardAccumulationAllowed(true))) {
+                                 .setRewardAccumulationAllowed(true)
+                                 .setDiscountedTotalRewardFormulasAllowed(true)
+                                 .setDiscountedCumulativeRewardFormulasAllowed(true))) {
         return true;
     } else if (checkTask.isOnlyInitialStatesRelevantSet()) {
         auto multiObjectiveFragment = storm::logic::multiObjective()
@@ -296,6 +299,20 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
 }
 
 template<typename SparseMdpModelType>
+std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::computeDiscountedCumulativeRewards(
+    Environment const& env, storm::logic::RewardMeasureType, CheckTask<storm::logic::DiscountedCumulativeRewardFormula, ValueType> const& checkTask) {
+    storm::logic::DiscountedCumulativeRewardFormula const& rewardPathFormula = checkTask.getFormula();
+    STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
+                    "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
+    STORM_LOG_THROW(rewardPathFormula.hasIntegerBound(), storm::exceptions::InvalidPropertyException, "Formula needs to have a discrete time bound.");
+    auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
+    std::vector<ValueType> numericResult = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType>::computeDiscountedCumulativeRewards(
+        env, storm::solver::SolveGoal<ValueType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(), rewardModel.get(),
+        rewardPathFormula.getNonStrictBound<uint64_t>(), rewardPathFormula.getDiscountFactor<ValueType>());
+    return std::unique_ptr<CheckResult>(new ExplicitQuantitativeCheckResult<ValueType>(std::move(numericResult)));
+}
+
+template<typename SparseMdpModelType>
 std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::computeInstantaneousRewards(
     Environment const& env, storm::logic::RewardMeasureType, CheckTask<storm::logic::InstantaneousRewardFormula, ValueType> const& checkTask) {
     storm::logic::InstantaneousRewardFormula const& rewardPathFormula = checkTask.getFormula();
@@ -362,6 +379,25 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
         result->asExplicitQuantitativeCheckResult<ValueType>().setScheduler(std::move(ret.scheduler));
     }
     return result;
+}
+
+template<typename SparseMdpModelType>
+std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::computeDiscountedTotalRewards(
+    Environment const& env, storm::logic::RewardMeasureType, CheckTask<storm::logic::DiscountedTotalRewardFormula, ValueType> const& checkTask) {
+    STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
+                    "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
+    auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
+    storm::logic::DiscountedTotalRewardFormula const& rewardPathFormula = checkTask.getFormula();
+    auto discountFactor = rewardPathFormula.getDiscountFactor<ValueType>();
+    auto ret = storm::modelchecker::helper::DiscountingHelper<ValueType>::solveWithDiscountedValueIteration(env, );
+
+        env, storm::solver::SolveGoal<ValueType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(),
+        this->getModel().getBackwardTransitions(), rewardModel.get(), checkTask.isQualitativeSet(), checkTask.isProduceSchedulersSet(), discountFactor, checkTask.getHint());
+        std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<ValueType>(std::move(ret.values)));
+        if (checkTask.isProduceSchedulersSet() && ret.scheduler) {
+            result->asExplicitQuantitativeCheckResult<ValueType>().setScheduler(std::move(ret.scheduler));
+        }
+        return result;
 }
 
 template<typename SparseMdpModelType>
