@@ -8,11 +8,9 @@
 #include "storm/solver/MultiplicationStyle.h"
 #include "storm/solver/OptimizationDirection.h"
 #include "storm/solver/SolverStatus.h"
+#include "storm/solver/helper/ValueIterationOperatorForward.h"
 
 namespace storm::solver::helper {
-
-template<typename ValueType, bool TrivialRowGrouping>
-class ValueIterationOperator;
 
 template<typename ValueType, bool TrivialRowGrouping>
 class DiscountedValueIterationHelper {
