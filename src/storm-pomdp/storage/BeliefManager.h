@@ -99,6 +99,8 @@ class BeliefManager {
 
     std::vector<BeliefValueType> computeMatrixBeliefProduct(BeliefId const &beliefId, storm::storage::SparseMatrix<BeliefValueType> &matrix);
 
+    std::unordered_map<StateType, BeliefValueType> getBeliefAsMap(BeliefId const &beliefId);
+
    private:
     std::vector<BeliefValueType> getBeliefAsVector(BeliefId const &beliefId);
 

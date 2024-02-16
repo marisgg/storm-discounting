@@ -68,6 +68,11 @@ class BeliefExplorationPomdpModelChecker {
         Converged,
     };
 
+    struct BeliefExchange {
+        std::unordered_map<uint64_t, std::unordered_map<uint64_t, BeliefValueType>> idToBeliefMap;
+        std::unordered_map<uint64_t, ValueType> beliefIdToValueMap;
+    };
+
     /**
      * Struct used to store the results of the model checker
      */
@@ -157,6 +162,15 @@ class BeliefExplorationPomdpModelChecker {
     void terminateUnfolding();
 
     /**
+     * This function sets the unfolding process to a waiting state.
+     * The unfolding process is part of the interactive belief exploration in the POMDP model checker.
+     * When the unfolding process is in a waiting state, it is paused and waiting for further instructions.
+     */
+    void setUnfoldingToWait();
+
+    void pauseUnfoldingForCutOffValues();
+
+    /**
      * Indicates whether there is a result after an interactive unfolding was paused.
      * @return True, if the model checking process of the current approximation has finished.
      */
@@ -192,13 +206,17 @@ class BeliefExplorationPomdpModelChecker {
      */
     int64_t getStatus();
 
+    void setExchangeValueForBelief(uint64_t beliefId, ValueType value);
+
+    std::unordered_map<uint64_t, std::unordered_map<uint64_t, BeliefValueType>> getExchangeBeliefMap();
+
    private:
     /* Struct Definition(s) */
 
     /**
      * Control parameters for the interactive unfolding
      */
-    enum class UnfoldingControl { Run, Pause, Terminate };
+    enum class UnfoldingControl { Run, Pause, Terminate, WaitForCutoffValues, PauseAndComputeCutoffValues };
 
     /**
      * Struct containing statistics for the belief exploration process
@@ -365,6 +383,8 @@ class BeliefExplorationPomdpModelChecker {
     Status unfoldingStatus;
     UnfoldingControl unfoldingControl;
     Result interactiveResult = Result(-storm::utility::infinity<ValueType>(), storm::utility::infinity<ValueType>());
+
+    BeliefExchange beliefExchange;
 };
 
 }  // namespace modelchecker

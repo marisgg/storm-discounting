@@ -1389,6 +1389,28 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::adjustActions(uint64_t total
     }
 }
 
+template<typename PomdpType, typename BeliefValueType>
+std::vector<typename BeliefMdpExplorer<PomdpType, BeliefValueType>::BeliefId> BeliefMdpExplorer<PomdpType, BeliefValueType>::getBeliefIdsOfStatesToExplore()
+    const {
+    std::vector<BeliefId> result;
+    for (auto const &entry : mdpStatesToExploreStatePrio) {
+        result.push_back(mdpStateToBeliefIdMap[entry.first]);
+    }
+    return result;
+}
+
+template<typename PomdpType, typename BeliefValueType>
+std::unordered_map<typename BeliefMdpExplorer<PomdpType, BeliefValueType>::BeliefId,
+                   std::unordered_map<typename BeliefMdpExplorer<PomdpType, BeliefValueType>::BeliefId, BeliefValueType>>
+BeliefMdpExplorer<PomdpType, BeliefValueType>::getBeliefIdToBeliefMap(
+    std::vector<typename BeliefMdpExplorer<PomdpType, BeliefValueType>::BeliefId> beliefIds) const {
+    std::unordered_map<BeliefId, std::unordered_map<BeliefId, BeliefValueType>> result;
+    for (auto const &beliefId : beliefIds) {
+        result[beliefId] = beliefManager->getBeliefAsMap(beliefId);
+    }
+    return result;
+}
+
 template class BeliefMdpExplorer<storm::models::sparse::Pomdp<double>>;
 
 template class BeliefMdpExplorer<storm::models::sparse::Pomdp<double>, storm::RationalNumber>;

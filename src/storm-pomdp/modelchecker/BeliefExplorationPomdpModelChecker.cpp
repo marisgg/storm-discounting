@@ -1099,10 +1099,19 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                                                                 << "Clipped States: " << statistics.nrClippedStates.value() << "\n");
             }
         }
-        if (unfoldingControl == UnfoldingControl::Pause && !stateStored) {
+        if ((unfoldingControl == UnfoldingControl::Pause || unfoldingControl == UnfoldingControl::PauseAndComputeCutoffValues) && !stateStored) {
             underApproximation->storeExplorationState();
             stateStored = true;
+            if (unfoldingControl == UnfoldingControl::PauseAndComputeCutoffValues) {
+                beliefExchange.idToBeliefMap = underApproximation->getBeliefIdToBeliefMap(underApproximation->getBeliefIdsOfStatesToExplore());
+                beliefExchange.beliefIdToValueMap.clear();
+                setUnfoldingToWait();
+                while (unfoldingControl == UnfoldingControl::WaitForCutoffValues)
+                    ;
+                pauseUnfolding();
+            }
         }
+
         uint64_t currId = underApproximation->exploreNextState();
         uint32_t currObservation = beliefManager->getBeliefObservation(currId);
         uint64_t addedActions = 0;
@@ -1229,6 +1238,23 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                         underApproximation->addChoiceLabelToCurrentState(addedActions, "sched_" + std::to_string(i));
                     }
                     addedActions++;
+                }
+                if (beliefExchange.beliefIdToValueMap.count(currId) > 0) {
+                    auto cutOffValue = beliefExchange.beliefIdToValueMap.at(currId);
+                    if (computeRewards) {
+                        if (cutOffValue != storm::utility::infinity<ValueType>()) {
+                            underApproximation->addTransitionsToExtraStates(addedActions, storm::utility::one<ValueType>());
+                            underApproximation->addRewardToCurrentState(addedActions, cutOffValue);
+                        } else {
+                            underApproximation->addTransitionsToExtraStates(addedActions, storm::utility::zero<ValueType>(), storm::utility::one<ValueType>());
+                        }
+                    } else {
+                        underApproximation->addTransitionsToExtraStates(addedActions, cutOffValue, storm::utility::one<ValueType>() - cutOffValue);
+                    }
+                    if (pomdp().hasChoiceLabeling()) {
+                        underApproximation->addChoiceLabelToCurrentState(addedActions, "external_value");
+                    }
+                    ++addedActions;
                 }
                 if (underApproximation->hasFMSchedulerValues()) {
                     uint64_t transitionNr = 0;
@@ -1424,6 +1450,18 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
 }
 
 template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
+void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::setUnfoldingToWait() {
+    STORM_LOG_TRACE("WAIT COMMAND ISSUED");
+    setUnfoldingControl(UnfoldingControl::WaitForCutoffValues);
+}
+
+template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
+void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::pauseUnfoldingForCutOffValues() {
+    STORM_LOG_TRACE("WAIT COMMAND ISSUED");
+    setUnfoldingControl(UnfoldingControl::PauseAndComputeCutoffValues);
+}
+
+template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
 void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::pauseUnfolding() {
     STORM_LOG_TRACE("PAUSE COMMAND ISSUED");
     setUnfoldingControl(UnfoldingControl::Pause);
@@ -1539,6 +1577,17 @@ typename PomdpModelType::ValueType BeliefExplorationPomdpModelChecker<PomdpModel
         return storm::utility::abs<typename PomdpModelType::ValueType>(u - l) * storm::utility::convertNumber<typename PomdpModelType::ValueType, uint64_t>(2) /
                (l + u);
     }
+}
+
+template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
+void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::setExchangeValueForBelief(uint64_t beliefId, ValueType value) {
+    beliefExchange.beliefIdToValueMap[beliefId] = value;
+}
+
+template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
+std::unordered_map<uint64_t, std::unordered_map<uint64_t, BeliefValueType>>
+BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::getExchangeBeliefMap() {
+    return beliefExchange.idToBeliefMap;
 }
 
 /* Template Instantiations */

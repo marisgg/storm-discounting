@@ -255,6 +255,10 @@ class BeliefMdpExplorer {
 
     std::vector<BeliefValueType> computeProductWithSparseMatrix(BeliefId const &beliefId, storm::storage::SparseMatrix<BeliefValueType> &matrix) const;
 
+    std::vector<BeliefId> getBeliefIdsOfStatesToExplore() const;
+
+    std::unordered_map<BeliefId, std::unordered_map<BeliefId, BeliefValueType>> getBeliefIdToBeliefMap(std::vector<BeliefId> beliefIds) const;
+
    private:
     MdpStateType noState() const;
 
