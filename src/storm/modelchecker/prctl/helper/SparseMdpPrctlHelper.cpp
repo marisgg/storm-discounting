@@ -4,6 +4,7 @@
 
 #include "storm/modelchecker/prctl/helper/SemanticSolutionType.h"
 
+#include "storm/modelchecker/helper/DiscountingHelper.h"
 #include "storm/modelchecker/hints/ExplicitModelCheckerHint.h"
 #include "storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h"
 #include "storm/modelchecker/prctl/helper/DsMpiUpperRewardBoundsComputer.h"
@@ -973,13 +974,13 @@ std::vector<SolutionType> SparseMdpPrctlHelper<ValueType, SolutionType>::compute
     STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
 
     // Compute the reward vector to add in each step based on the available reward models.
-    std::vector<ValueType> totalRewardVector = rewardModel.getTotalRewardVector(transitionMatrix);
+    std::vector<SolutionType> totalRewardVector = rewardModel.getTotalRewardVector(transitionMatrix);
 
     // Initialize result to the zero vector.
-    std::vector<ValueType> result(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+    std::vector<SolutionType> result(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
 
     auto multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, transitionMatrix);
-    multiplier->repeatedMultiplyAndReduce(env, goal.direction(), result, &totalRewardVector, stepBound);
+    multiplier->repeatedMultiplyAndReduceWithFactor(env, goal.direction(), result, &totalRewardVector, stepBound, discountFactor);
 
     return result;
 }
@@ -990,97 +991,14 @@ MDPSparseModelCheckingHelperReturnType<SolutionType> SparseMdpPrctlHelper<ValueT
     Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
     storm::storage::SparseMatrix<ValueType> const& backwardTransitions, RewardModelType const& rewardModel, bool qualitative, bool produceScheduler,
     ValueType discountFactor, ModelCheckerHint const& hint) {
-    // Reduce to reachability rewards
-    if (goal.minimize()) {
-        // Identify the states from which no reward can be collected under some scheduler
-        storm::storage::BitVector choicesWithoutReward = rewardModel.getChoicesWithZeroReward(transitionMatrix);
-        storm::storage::BitVector statesWithZeroRewardChoice(transitionMatrix.getRowGroupCount(), false);
-        for (uint64_t state = 0; state < transitionMatrix.getRowGroupCount(); ++state) {
-            if (choicesWithoutReward.getNextSetIndex(transitionMatrix.getRowGroupIndices()[state]) < transitionMatrix.getRowGroupIndices()[state + 1]) {
-                statesWithZeroRewardChoice.set(state);
-            }
-        }
-        storm::storage::BitVector rew0EStates =
-            storm::utility::graph::performProbGreater0A(transitionMatrix, transitionMatrix.getRowGroupIndices(), backwardTransitions,
-                                                        statesWithZeroRewardChoice, ~statesWithZeroRewardChoice, false, 0, choicesWithoutReward);
-        rew0EStates.complement();
-        auto result = computeReachabilityRewards(env, std::move(goal), transitionMatrix, backwardTransitions, rewardModel, rew0EStates, qualitative,
-                                                 produceScheduler, hint);
-        if (result.scheduler) {
-            storm::utility::graph::computeSchedulerStayingInStates(rew0EStates, transitionMatrix, *result.scheduler, choicesWithoutReward);
-        }
-        return result;
-    } else {
-        // Identify the states from which only states with zero reward are reachable.
-        storm::storage::BitVector statesWithoutReward = rewardModel.getStatesWithZeroReward(transitionMatrix);
-        storm::storage::BitVector rew0AStates = storm::utility::graph::performProbGreater0E(backwardTransitions, statesWithoutReward, ~statesWithoutReward);
-        rew0AStates.complement();
+    std::vector<ValueType> b;
 
-        // There might be end components that consists only of states/choices with zero rewards. The reachability reward semantics would assign such
-        // end components reward infinity. To avoid this, we potentially need to eliminate such end components
-        storm::storage::BitVector trueStates(transitionMatrix.getRowGroupCount(), true);
-        if (storm::utility::graph::performProb1A(transitionMatrix, transitionMatrix.getRowGroupIndices(), backwardTransitions, trueStates, rew0AStates)
-                .full()) {
-            return computeReachabilityRewards(env, std::move(goal), transitionMatrix, backwardTransitions, rewardModel, rew0AStates, qualitative,
-                                              produceScheduler, hint);
-        } else {
-            // The transformation of schedulers for the ec-eliminated system back to the original one is not implemented.
-            STORM_LOG_ERROR_COND(!produceScheduler, "Can not produce scheduler for this property (functionality not implemented");
-            storm::storage::BitVector choicesWithoutReward = rewardModel.getChoicesWithZeroReward(transitionMatrix);
-            auto ecElimResult = storm::transformer::EndComponentEliminator<ValueType>::transform(
-                transitionMatrix, storm::storage::BitVector(transitionMatrix.getRowGroupCount(), true), choicesWithoutReward, rew0AStates, true);
-            storm::storage::BitVector newRew0AStates(ecElimResult.matrix.getRowGroupCount(), false);
-            for (auto oldRew0AState : rew0AStates) {
-                newRew0AStates.set(ecElimResult.oldToNewStateMapping[oldRew0AState]);
-            }
-
-            if (goal.hasRelevantValues()) {
-                storm::storage::BitVector newRelevantValues(ecElimResult.matrix.getRowGroupCount(), false);
-                for (auto oldRelevantState : goal.relevantValues()) {
-                    newRelevantValues.set(ecElimResult.oldToNewStateMapping[oldRelevantState]);
-                }
-                goal.relevantValues() = std::move(newRelevantValues);
-            }
-
-            MDPSparseModelCheckingHelperReturnType<ValueType> result = computeReachabilityRewardsHelper(
-                env, std::move(goal), ecElimResult.matrix, ecElimResult.matrix.transpose(true),
-                [&](uint_fast64_t rowCount, storm::storage::SparseMatrix<ValueType> const& newTransitionMatrix, storm::storage::BitVector const& maybeStates) {
-                    std::vector<ValueType> result;
-                    std::vector<ValueType> oldChoiceRewards = rewardModel.getTotalRewardVector(transitionMatrix);
-                    result.reserve(rowCount);
-                    for (uint64_t newState : maybeStates) {
-                        for (auto newChoice : newTransitionMatrix.getRowGroupIndices(newState)) {
-                            uint64_t oldChoice = ecElimResult.newToOldRowMapping[newChoice];
-                            result.push_back(oldChoiceRewards[oldChoice]);
-                        }
-                    }
-                    STORM_LOG_ASSERT(result.size() == rowCount, "Unexpected size of reward vector.");
-                    return result;
-                },
-                newRew0AStates, qualitative, false,
-                [&]() {
-                    storm::storage::BitVector newStatesWithoutReward(ecElimResult.matrix.getRowGroupCount(), false);
-                    for (auto oldStateWithoutRew : statesWithoutReward) {
-                        newStatesWithoutReward.set(ecElimResult.oldToNewStateMapping[oldStateWithoutRew]);
-                    }
-                    return newStatesWithoutReward;
-                },
-                [&]() {
-                    storm::storage::BitVector newChoicesWithoutReward(ecElimResult.matrix.getRowGroupCount(), false);
-                    for (uint64_t newChoice = 0; newChoice < ecElimResult.matrix.getRowCount(); ++newChoice) {
-                        if (choicesWithoutReward.get(ecElimResult.newToOldRowMapping[newChoice])) {
-                            newChoicesWithoutReward.set(newChoice);
-                        }
-                    }
-                    return newChoicesWithoutReward;
-                });
-
-            std::vector<ValueType> resultInEcQuotient = std::move(result.values);
-            result.values.resize(ecElimResult.oldToNewStateMapping.size());
-            storm::utility::vector::selectVectorValues(result.values, ecElimResult.oldToNewStateMapping, resultInEcQuotient);
-            return result;
-        }
-    }
+    std::vector<SolutionType> x = std::vector<SolutionType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<SolutionType>());
+    b = rewardModel.getTotalRewardVector(transitionMatrix);
+    storm::modelchecker::helper::DiscountingHelper<ValueType> discountingHelper(transitionMatrix);
+    discountingHelper.setUpViOperator();
+    discountingHelper.solveWithDiscountedValueIteration(env, goal.direction(), x, b, discountFactor);
+    return MDPSparseModelCheckingHelperReturnType<SolutionType>(std::move(x));
 }
 
 template<typename ValueType, typename SolutionType>

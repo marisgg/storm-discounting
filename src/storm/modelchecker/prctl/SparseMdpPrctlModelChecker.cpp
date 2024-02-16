@@ -415,22 +415,29 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
     return result;
 }
 
+template<>
+std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<storm::models::sparse::Mdp<storm::Interval>>::computeDiscountedTotalRewards(
+    Environment const& env, storm::logic::RewardMeasureType, CheckTask<storm::logic::DiscountedTotalRewardFormula, SolutionType> const& checkTask) {
+    STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Discounted properties are not implemented for interval models.");
+}
+
 template<typename SparseMdpModelType>
 std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::computeDiscountedTotalRewards(
     Environment const& env, storm::logic::RewardMeasureType, CheckTask<storm::logic::DiscountedTotalRewardFormula, SolutionType> const& checkTask) {
-    /*    STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
-                        "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
+    STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
+                    "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
         auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
         storm::logic::DiscountedTotalRewardFormula const& rewardPathFormula = checkTask.getFormula();
         auto discountFactor = rewardPathFormula.getDiscountFactor<ValueType>();
-        auto ret = storm::modelchecker::helper::DiscountingHelper<ValueType>::solveWithDiscountedValueIteration(env, );
-
-            env, storm::solver::SolveGoal<ValueType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(),
+        auto ret = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeDiscountedTotalRewards(
+            env, storm::solver::SolveGoal<ValueType, SolutionType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(),
             this->getModel().getBackwardTransitions(), rewardModel.get(), checkTask.isQualitativeSet(), checkTask.isProduceSchedulersSet(), discountFactor,
-       checkTask.getHint()); std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<ValueType>(std::move(ret.values))); if
-       (checkTask.isProduceSchedulersSet() && ret.scheduler) { result->asExplicitQuantitativeCheckResult<ValueType>().setScheduler(std::move(ret.scheduler));
-            }
-            return result;*/
+            checkTask.getHint());
+        std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<SolutionType>(std::move(ret.values)));
+        if (checkTask.isProduceSchedulersSet() && ret.scheduler) {
+            result->asExplicitQuantitativeCheckResult<SolutionType>().setScheduler(std::move(ret.scheduler));
+        }
+        return result;
 }
 
 template<typename SparseMdpModelType>
