@@ -67,34 +67,34 @@ bool SparseMdpPrctlModelChecker<SparseMdpModelType>::canHandleStatic(CheckTask<s
                                      .setTimeOperatorsAllowed(true)
                                      .setReachbilityTimeFormulasAllowed(true)
                                      .setRewardAccumulationAllowed(true)
-                                 .setDiscountedTotalRewardFormulasAllowed(true)
-                                 .setDiscountedCumulativeRewardFormulasAllowed(true))) {
-        return true;
-    } else if (checkTask.isOnlyInitialStatesRelevantSet()) {
-        auto multiObjectiveFragment = storm::logic::multiObjective()
-                                          .setTimeAllowed(true)
-                                          .setCumulativeRewardFormulasAllowed(true)
-                                          .setTimeBoundedCumulativeRewardFormulasAllowed(true)
-                                          .setStepBoundedCumulativeRewardFormulasAllowed(true)
-                                          .setRewardBoundedCumulativeRewardFormulasAllowed(true)
-                                          .setTimeBoundedUntilFormulasAllowed(true)
-                                          .setStepBoundedUntilFormulasAllowed(true)
-                                          .setRewardBoundedUntilFormulasAllowed(true)
-                                          .setMultiDimensionalBoundedUntilFormulasAllowed(true)
-                                          .setMultiDimensionalCumulativeRewardFormulasAllowed(true)
-                                          .setRewardAccumulationAllowed(true);
-        auto lexObjectiveFragment = storm::logic::lexObjective()
-                                        .setHOAPathFormulasAllowed(true)
-                                        .setCumulativeRewardFormulasAllowed(true)
-                                        .setTimeBoundedCumulativeRewardFormulasAllowed(true)
-                                        .setStepBoundedCumulativeRewardFormulasAllowed(true)
-                                        .setRewardBoundedCumulativeRewardFormulasAllowed(true)
-                                        .setTimeBoundedUntilFormulasAllowed(true)
-                                        .setStepBoundedUntilFormulasAllowed(true)
-                                        .setRewardBoundedUntilFormulasAllowed(true)
-                                        .setMultiDimensionalBoundedUntilFormulasAllowed(true)
-                                        .setMultiDimensionalCumulativeRewardFormulasAllowed(true)
-                                        .setRewardAccumulationAllowed(true);
+                                     .setDiscountedTotalRewardFormulasAllowed(true)
+                                     .setDiscountedCumulativeRewardFormulasAllowed(true))) {
+            return true;
+        } else if (checkTask.isOnlyInitialStatesRelevantSet()) {
+            auto multiObjectiveFragment = storm::logic::multiObjective()
+                                              .setTimeAllowed(true)
+                                              .setCumulativeRewardFormulasAllowed(true)
+                                              .setTimeBoundedCumulativeRewardFormulasAllowed(true)
+                                              .setStepBoundedCumulativeRewardFormulasAllowed(true)
+                                              .setRewardBoundedCumulativeRewardFormulasAllowed(true)
+                                              .setTimeBoundedUntilFormulasAllowed(true)
+                                              .setStepBoundedUntilFormulasAllowed(true)
+                                              .setRewardBoundedUntilFormulasAllowed(true)
+                                              .setMultiDimensionalBoundedUntilFormulasAllowed(true)
+                                              .setMultiDimensionalCumulativeRewardFormulasAllowed(true)
+                                              .setRewardAccumulationAllowed(true);
+            auto lexObjectiveFragment = storm::logic::lexObjective()
+                                            .setHOAPathFormulasAllowed(true)
+                                            .setCumulativeRewardFormulasAllowed(true)
+                                            .setTimeBoundedCumulativeRewardFormulasAllowed(true)
+                                            .setStepBoundedCumulativeRewardFormulasAllowed(true)
+                                            .setRewardBoundedCumulativeRewardFormulasAllowed(true)
+                                            .setTimeBoundedUntilFormulasAllowed(true)
+                                            .setStepBoundedUntilFormulasAllowed(true)
+                                            .setRewardBoundedUntilFormulasAllowed(true)
+                                            .setMultiDimensionalBoundedUntilFormulasAllowed(true)
+                                            .setMultiDimensionalCumulativeRewardFormulasAllowed(true)
+                                            .setRewardAccumulationAllowed(true);
 
             if (formula.isInFragment(multiObjectiveFragment) || formula.isInFragment(storm::logic::quantiles()) || formula.isInFragment(lexObjectiveFragment)) {
                 if (requiresSingleInitialState) {
@@ -426,18 +426,18 @@ std::unique_ptr<CheckResult> SparseMdpPrctlModelChecker<SparseMdpModelType>::com
     Environment const& env, storm::logic::RewardMeasureType, CheckTask<storm::logic::DiscountedTotalRewardFormula, SolutionType> const& checkTask) {
     STORM_LOG_THROW(checkTask.isOptimizationDirectionSet(), storm::exceptions::InvalidPropertyException,
                     "Formula needs to specify whether minimal or maximal values are to be computed on nondeterministic model.");
-        auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
-        storm::logic::DiscountedTotalRewardFormula const& rewardPathFormula = checkTask.getFormula();
-        auto discountFactor = rewardPathFormula.getDiscountFactor<ValueType>();
-        auto ret = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeDiscountedTotalRewards(
-            env, storm::solver::SolveGoal<ValueType, SolutionType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(),
-            this->getModel().getBackwardTransitions(), rewardModel.get(), checkTask.isQualitativeSet(), checkTask.isProduceSchedulersSet(), discountFactor,
-            checkTask.getHint());
-        std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<SolutionType>(std::move(ret.values)));
-        if (checkTask.isProduceSchedulersSet() && ret.scheduler) {
-            result->asExplicitQuantitativeCheckResult<SolutionType>().setScheduler(std::move(ret.scheduler));
-        }
-        return result;
+    auto rewardModel = storm::utility::createFilteredRewardModel(this->getModel(), checkTask);
+    storm::logic::DiscountedTotalRewardFormula const& rewardPathFormula = checkTask.getFormula();
+    auto discountFactor = rewardPathFormula.getDiscountFactor<ValueType>();
+    auto ret = storm::modelchecker::helper::SparseMdpPrctlHelper<ValueType, SolutionType>::computeDiscountedTotalRewards(
+        env, storm::solver::SolveGoal<ValueType, SolutionType>(this->getModel(), checkTask), this->getModel().getTransitionMatrix(),
+        this->getModel().getBackwardTransitions(), rewardModel.get(), checkTask.isQualitativeSet(), checkTask.isProduceSchedulersSet(), discountFactor,
+        checkTask.getHint());
+    std::unique_ptr<CheckResult> result(new ExplicitQuantitativeCheckResult<SolutionType>(std::move(ret.values)));
+    if (checkTask.isProduceSchedulersSet() && ret.scheduler) {
+        result->asExplicitQuantitativeCheckResult<SolutionType>().setScheduler(std::move(ret.scheduler));
+    }
+    return result;
 }
 
 template<typename SparseMdpModelType>

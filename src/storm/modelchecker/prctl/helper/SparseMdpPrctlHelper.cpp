@@ -968,8 +968,7 @@ template<typename ValueType, typename SolutionType>
 template<typename RewardModelType>
 std::vector<SolutionType> SparseMdpPrctlHelper<ValueType, SolutionType>::computeDiscountedCumulativeRewards(
     Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
-                                                                                           RewardModelType const& rewardModel, uint_fast64_t stepBound,
-                                                                                           ValueType discountFactor) {
+    RewardModelType const& rewardModel, uint_fast64_t stepBound, ValueType discountFactor) {
     // Only compute the result if the model has at least one reward this->getModel().
     STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
 
