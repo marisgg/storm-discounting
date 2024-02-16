@@ -289,8 +289,8 @@ void FormulaParserGrammar::initialize() {
     //            debug(filterProperty)
     //            debug(constantDefinition )
     //            debug(start)
-    debug(discountedCumulativeRewardFormula);
-    debug(discountedTotalRewardFormula);
+    //            debug(discountedCumulativeRewardFormula);
+    //            debug(discountedTotalRewardFormula);
 
     // Enable error reporting.
     qi::on_error<qi::fail>(rewardModelName, handler(qi::_1, qi::_2, qi::_3, qi::_4));
