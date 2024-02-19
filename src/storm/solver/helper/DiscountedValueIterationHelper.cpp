@@ -12,8 +12,8 @@ class DiscountedVIOperatorBackend {
     DiscountedVIOperatorBackend(ValueType const& precision, ValueType const& discountFactor)
         : precision{precision},
           discountFactor{discountFactor},
-          bound{((storm::utility::one<ValueType>() - discountFactor) * precision) / (2 * discountFactor)} {
-        // intentionally empty
+          bound{(((storm::utility::one<ValueType>() - discountFactor) * precision) / (2 * discountFactor))} {
+        // Intentionally left empty
     }
 
     void startNewIteration() {
@@ -31,7 +31,7 @@ class DiscountedVIOperatorBackend {
     void applyUpdate(ValueType& currValue, [[maybe_unused]] uint64_t rowGroup) {
         if (isConverged) {
             if constexpr (Relative) {
-                isConverged = storm::utility::abs<ValueType>(currValue - *best) < storm::utility::abs<ValueType>(bound * currValue);
+                isConverged = storm::utility::abs<ValueType>(currValue - *best) <= storm::utility::abs<ValueType>(bound * currValue);
             } else {
                 isConverged = storm::utility::abs<ValueType>(currValue - *best) <= bound;
             }
