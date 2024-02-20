@@ -126,6 +126,51 @@ class ValueIterationOperator {
         return applyRobust<RobustDir>(operand, operand, offsets, backend);
     }
 
+    /*
+     * Discounting Variants
+     */
+    template<typename OperandType, typename OffsetType, typename BackendType>
+    bool applyWithDiscounting(OperandType const& operandIn, OperandType& operandOut, OffsetType const& offsets, BackendType& backend,
+                              ValueType const& discountFactor) const {
+        // We assume in the normal apply case that we can just maximize.
+        return applyRobustWithDiscounting<OptimizationDirection::Maximize>(operandIn, operandOut, offsets, backend, discountFactor);
+    }
+
+    template<OptimizationDirection RobustDir, typename OperandType, typename OffsetType, typename BackendType>
+    bool applyRobustWithDiscounting(OperandType const& operandIn, OperandType& operandOut, OffsetType const& offsets, BackendType& backend,
+                                    ValueType const& discountFactor) const {
+        if (hasSkippedRows) {
+            if (backwards) {
+                return applyWithDiscounting<OperandType, OffsetType, BackendType, true, true, RobustDir>(operandOut, operandIn, offsets, backend,
+                                                                                                         discountFactor);
+            } else {
+                return applyWithDiscounting<OperandType, OffsetType, BackendType, false, true, RobustDir>(operandOut, operandIn, offsets, backend,
+                                                                                                          discountFactor);
+            }
+        } else {
+            if (backwards) {
+                return applyWithDiscounting<OperandType, OffsetType, BackendType, true, false, RobustDir>(operandOut, operandIn, offsets, backend,
+                                                                                                          discountFactor);
+            } else {
+                return applyWithDiscounting<OperandType, OffsetType, BackendType, false, false, RobustDir>(operandOut, operandIn, offsets, backend,
+                                                                                                           discountFactor);
+            }
+        }
+    }
+
+    /*!
+     * Same as `applyWithDiscounting` but with operandOut==operandIn
+     */
+    template<typename OperandType, typename OffsetType, typename BackendType>
+    bool applyInPlace(OperandType& operand, OffsetType const& offsets, BackendType& backend, ValueType const& discountFactor) const {
+        return apply(operand, operand, offsets, backend, discountFactor);
+    }
+
+    template<OptimizationDirection RobustDir, typename OperandType, typename OffsetType, typename BackendType>
+    bool applyInPlaceRobust(OperandType& operand, OffsetType const& offsets, BackendType& backend, ValueType const& discountFactor) const {
+        return applyRobust<RobustDir>(operand, operand, offsets, backend, discountFactor);
+    }
+
     /*!
      * Sets rows that will be skipped when applying the operator.
      * @note each row group shall have at least one row that is not ignored
@@ -187,6 +232,56 @@ class ValueIterationOperator {
                     ++rowIndex;
                     if (!SkipIgnoredRows || !skipIgnoredRow(matrixColumnIt, matrixValueIt)) {
                         backend.nextRow(applyRow<RobustDirection>(matrixColumnIt, matrixValueIt, operandIn, offsets, rowIndex), groupIndex, rowIndex);
+                    }
+                }
+            }
+            if constexpr (isPair<OperandType>::value) {
+                backend.applyUpdate(operandOut.first[groupIndex], operandOut.second[groupIndex], groupIndex);
+            } else {
+                backend.applyUpdate(operandOut[groupIndex], groupIndex);
+            }
+            if (backend.abort()) {
+                return backend.converged();
+            }
+        }
+        STORM_LOG_ASSERT(matrixColumnIt + 1 == matrixColumns.cend(), "Unexpected position of matrix column iterator.");
+        STORM_LOG_ASSERT(matrixValueIt == matrixValues.cend(), "Unexpected position of matrix column iterator.");
+        backend.endOfIteration();
+        return backend.converged();
+    }
+
+    /*!
+     * Internal variant of `apply`
+     * @note This and other apply methods are intentionally implemented in the header file as there are potentially many different BackendTypes
+     */
+    template<typename OperandType, typename OffsetType, typename BackendType, bool Backward, bool SkipIgnoredRows, OptimizationDirection RobustDirection>
+    bool applyWithDiscounting(OperandType& operandOut, OperandType const& operandIn, OffsetType const& offsets, BackendType& backend,
+                              ValueType const& discountFactor) const {
+        STORM_LOG_ASSERT(getSize(operandIn) == getSize(operandOut), "Input and Output Operands have different sizes.");
+        auto const operandSize = getSize(operandIn);
+        STORM_LOG_ASSERT(TrivialRowGrouping || rowGroupIndices->size() == operandSize + 1, "Dimension mismatch");
+        backend.startNewIteration();
+        auto matrixValueIt = matrixValues.cbegin();
+        auto matrixColumnIt = matrixColumns.cbegin();
+        for (auto groupIndex : indexRange<Backward>(0, operandSize)) {
+            STORM_LOG_ASSERT(matrixColumnIt != matrixColumns.end(), "VI Operator in invalid state.");
+            STORM_LOG_ASSERT(*matrixColumnIt >= StartOfRowIndicator, "VI Operator in invalid state.");
+            //            STORM_LOG_ASSERT(matrixValueIt != matrixValues.end(), "VI Operator in invalid state.");
+            if constexpr (TrivialRowGrouping) {
+                backend.firstRow(applyRowWithDiscounting<RobustDirection>(matrixColumnIt, matrixValueIt, operandIn, offsets, groupIndex, discountFactor),
+                                 groupIndex, groupIndex);
+            } else {
+                IndexType rowIndex = (*rowGroupIndices)[groupIndex];
+                if constexpr (SkipIgnoredRows) {
+                    rowIndex += skipMultipleIgnoredRows(matrixColumnIt, matrixValueIt);
+                }
+                backend.firstRow(applyRowWithDiscounting<RobustDirection>(matrixColumnIt, matrixValueIt, operandIn, offsets, rowIndex, discountFactor),
+                                 groupIndex, rowIndex);
+                while (*matrixColumnIt < StartOfRowGroupIndicator) {
+                    ++rowIndex;
+                    if (!SkipIgnoredRows || !skipIgnoredRow(matrixColumnIt, matrixValueIt)) {
+                        backend.nextRow(applyRowWithDiscounting<RobustDirection>(matrixColumnIt, matrixValueIt, operandIn, offsets, rowIndex, discountFactor),
+                                        groupIndex, rowIndex);
                     }
                 }
             }
@@ -274,6 +369,32 @@ class ValueIterationOperator {
         return result;
     }
 
+    template<OptimizationDirection RobustDirection, typename OperandType, typename OffsetType>
+    auto applyRowWithDiscounting(std::vector<IndexType>::const_iterator& matrixColumnIt, typename std::vector<ValueType>::const_iterator& matrixValueIt,
+                                 OperandType const& operand, OffsetType const& offsets, uint64_t offsetIndex, ValueType const& discountFactor) const {
+        if constexpr (std::is_same_v<ValueType, storm::Interval>) {
+            return applyRowRobust<RobustDirection>(matrixColumnIt, matrixValueIt, operand, offsets, offsetIndex, discountFactor);
+        } else {
+            return applyRowWithDiscountingStandard(matrixColumnIt, matrixValueIt, operand, offsets, offsetIndex, discountFactor);
+        }
+    }
+
+    template<typename OperandType, typename OffsetType>
+    auto applyRowWithDiscountingStandard(std::vector<IndexType>::const_iterator& matrixColumnIt, typename std::vector<ValueType>::const_iterator& matrixValueIt,
+                                         OperandType const& operand, OffsetType const& offsets, uint64_t offsetIndex, ValueType const& discountFactor) const {
+        STORM_LOG_ASSERT(*matrixColumnIt >= StartOfRowIndicator, "VI Operator in invalid state.");
+        auto result{initializeRowRes(operand, offsets, offsetIndex)};
+        for (++matrixColumnIt; *matrixColumnIt < StartOfRowIndicator; ++matrixColumnIt, ++matrixValueIt) {
+            if constexpr (isPair<OperandType>::value) {
+                result.first += operand.first[*matrixColumnIt] * (*matrixValueIt) * discountFactor;
+                result.second += operand.second[*matrixColumnIt] * (*matrixValueIt) * discountFactor;
+            } else {
+                result += operand[*matrixColumnIt] * (*matrixValueIt) * discountFactor;
+            }
+        }
+        return result;
+    }
+
     // Aux function for applyRowRobust
     template<OptimizationDirection RobustDirection>
     struct AuxCompare {
@@ -299,6 +420,43 @@ class ValueIterationOperator {
                 // Notice the unclear semantics here in terms of how to order things.
             } else {
                 result += operand[*matrixColumnIt] * (matrixValueIt->lower());
+            }
+            remainingValue -= matrixValueIt->lower();
+            if (!storm::utility::isZero(matrixValueIt->diameter())) {
+                tmp.emplace_back(operand[*matrixColumnIt], matrixValueIt->diameter());
+            }
+        }
+        if (storm::utility::isZero(remainingValue) || storm::utility::isOne(remainingValue)) {
+            return result;
+        }
+        AuxCompare<RobustDirection> compare;
+        std::sort(tmp.begin(), tmp.end(), compare);
+
+        for (auto const& valWidthPair : tmp) {
+            auto availableMass = std::min(valWidthPair.second, remainingValue);
+            result += availableMass * valWidthPair.first;
+            remainingValue -= availableMass;
+            if (storm::utility::isZero(remainingValue)) {
+                return result;
+            }
+        }
+        STORM_LOG_ASSERT(storm::utility::isZero(remainingValue), "Should be zero (all prob mass taken)");
+        return result;
+    }
+
+    template<OptimizationDirection RobustDirection, typename OperandType, typename OffsetType>
+    auto applyRowWithDiscountingRobust(std::vector<IndexType>::const_iterator& matrixColumnIt, typename std::vector<ValueType>::const_iterator& matrixValueIt,
+                                       OperandType const& operand, OffsetType const& offsets, uint64_t offsetIndex, ValueType const& discountFactor) const {
+        STORM_LOG_ASSERT(*matrixColumnIt >= StartOfRowIndicator, "VI Operator in invalid state.");
+        auto result{robustInitializeRowRes<RobustDirection>(operand, offsets, offsetIndex)};
+        std::vector<std::pair<SolutionType, SolutionType>> tmp;  // TODO this reallocation is too costly.
+        SolutionType remainingValue{storm::utility::one<SolutionType>()};
+        for (++matrixColumnIt; *matrixColumnIt < StartOfRowIndicator; ++matrixColumnIt, ++matrixValueIt) {
+            if constexpr (isPair<OperandType>::value) {
+                STORM_LOG_THROW(false, storm::exceptions::NotImplementedException, "Value Iteration is not implemented with pairs and interval-models.");
+                // Notice the unclear semantics here in terms of how to order things.
+            } else {
+                result += operand[*matrixColumnIt] * (matrixValueIt->lower()) * discountFactor;
             }
             remainingValue -= matrixValueIt->lower();
             if (!storm::utility::isZero(matrixValueIt->diameter())) {

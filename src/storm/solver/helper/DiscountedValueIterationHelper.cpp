@@ -21,11 +21,11 @@ class DiscountedVIOperatorBackend {
     }
 
     void firstRow(ValueType&& value, [[maybe_unused]] uint64_t rowGroup, [[maybe_unused]] uint64_t row) {
-        best = std::move(value) * discountFactor;
+        best = std::move(value);
     }
 
     void nextRow(ValueType&& value, [[maybe_unused]] uint64_t rowGroup, [[maybe_unused]] uint64_t row) {
-        best &= value * discountFactor;
+        best &= value;
     }
 
     void applyUpdate(ValueType& currValue, [[maybe_unused]] uint64_t rowGroup) {
@@ -81,7 +81,7 @@ SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::Disc
     SolverStatus status{SolverStatus::InProgress};
     while (status == SolverStatus::InProgress) {
         ++numIterations;
-        if (viOperator->template apply(*operand1, *operand2, offsets, backend)) {
+        if (viOperator->template applyWithDiscounting(*operand1, *operand2, offsets, backend, discountFactor)) {
             status = SolverStatus::Converged;
         } else if (iterationCallback) {
             status = iterationCallback(status);

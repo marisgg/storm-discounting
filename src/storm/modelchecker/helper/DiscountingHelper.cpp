@@ -34,8 +34,8 @@ void DiscountingHelper<ValueType>::showProgressIterative(uint64_t iteration) con
 }
 
 template<typename ValueType>
-bool DiscountingHelper<ValueType>::solveWithDiscountedValueIteration(storm::Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x,
-                                                                     std::vector<ValueType> const& b, ValueType discountFactor) const {
+bool DiscountingHelper<ValueType>::solveWithDiscountedValueIteration(storm::Environment const& env, std::optional<OptimizationDirection> dir,
+                                                                     std::vector<ValueType>& x, std::vector<ValueType> const& b, ValueType discountFactor) const {
     storm::solver::helper::DiscountedValueIterationHelper<ValueType, false> viHelper(viOperator);
     uint64_t numIterations{0};
     auto viCallback = [&](solver::SolverStatus const& current) {

@@ -16,8 +16,8 @@ class DiscountingHelper : public SingleValueModelCheckerHelper<ValueType, storm:
 
     void setUpViOperator() const;
 
-    bool solveWithDiscountedValueIteration(Environment const& env, OptimizationDirection dir, std::vector<ValueType>& x, std::vector<ValueType> const& b,
-                                           ValueType discountFactor) const;
+    bool solveWithDiscountedValueIteration(Environment const& env, std::optional<OptimizationDirection> dir, std::vector<ValueType>& x,
+                                           std::vector<ValueType> const& b, ValueType discountFactor) const;
 
    private:
     void showProgressIterative(uint64_t iteration) const;
