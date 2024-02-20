@@ -994,10 +994,20 @@ MDPSparseModelCheckingHelperReturnType<SolutionType> SparseMdpPrctlHelper<ValueT
 
     std::vector<SolutionType> x = std::vector<SolutionType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<SolutionType>());
     b = rewardModel.getTotalRewardVector(transitionMatrix);
-    storm::modelchecker::helper::DiscountingHelper<ValueType> discountingHelper(transitionMatrix);
+    storm::modelchecker::helper::DiscountingHelper<ValueType> discountingHelper(transitionMatrix, produceScheduler);
     discountingHelper.setUpViOperator();
+    
     discountingHelper.solveWithDiscountedValueIteration(env, goal.direction(), x, b, discountFactor);
-    return MDPSparseModelCheckingHelperReturnType<SolutionType>(std::move(x));
+    
+    std::unique_ptr<storm::storage::Scheduler<SolutionType>> scheduler;
+    if(produceScheduler){
+        scheduler = std::make_unique<storm::storage::Scheduler<ValueType>>(discountingHelper.computeScheduler());
+    }
+    STORM_LOG_ASSERT(!produceScheduler || scheduler, "Expected that a scheduler was obtained.");
+    STORM_LOG_ASSERT((!produceScheduler && !scheduler) || !scheduler->isPartialScheduler(), "Expected a fully defined scheduler");
+    STORM_LOG_ASSERT((!produceScheduler && !scheduler) || scheduler->isDeterministicScheduler(), "Expected a deterministic scheduler");
+    STORM_LOG_ASSERT((!produceScheduler && !scheduler) || scheduler->isMemorylessScheduler(), "Expected a memoryless scheduler");
+    return MDPSparseModelCheckingHelperReturnType<SolutionType>(std::move(x), std::move(scheduler));
 }
 
 template<typename ValueType, typename SolutionType>
