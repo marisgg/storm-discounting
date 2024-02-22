@@ -194,17 +194,26 @@ BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPTyp
             // Expected reward formula!
             rewardModelName = formulaInfo.getRewardModelName();
         }
+    } else if (formulaInfo.isDiscountedTotalRewardFormula()) {
+        rewardModelName = formulaInfo.getRewardModelName();
     } else {
         STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Unsupported formula '" << formula << "'.");
     }
-    if (storm::pomdp::detectFiniteBeliefMdp(pomdp(), formulaInfo.getTargetStates().states)) {
+    std::optional<storm::storage::BitVector> optionalTargetStates;
+    std::optional<ValueType> discountFactor;
+    if (!formulaInfo.isDiscountedTotalRewardFormula()) {
+        optionalTargetStates = formulaInfo.getTargetStates().states;
+    } else {
+        discountFactor = formula.asRewardOperatorFormula().getSubformula().asDiscountedTotalRewardFormula().getDiscountFactor<ValueType>();
+    }
+    if (storm::pomdp::detectFiniteBeliefMdp(pomdp(), optionalTargetStates)) {
         STORM_LOG_INFO("Detected that the belief MDP is finite.");
         statistics.beliefMdpDetectedToBeFinite = true;
     }
     if (options.interactiveUnfolding) {
-        unfoldInteractively(env, targetObservations, formulaInfo.minimize(), rewardModelName, pomdpValueBounds, result);
+        unfoldInteractively(env, targetObservations, formulaInfo.minimize(), rewardModelName, pomdpValueBounds, result, discountFactor);
     } else {
-        refineReachability(env, targetObservations, formulaInfo.minimize(), rewardModelName, pomdpValueBounds, result);
+        refineReachability(env, targetObservations, formulaInfo.minimize(), rewardModelName, pomdpValueBounds, result, discountFactor);
     }
     // "clear" results in case they were actually not requested (this will make the output a bit more clear)
     if ((formulaInfo.minimize() && !options.discretize) || (formulaInfo.maximize() && !options.unfold)) {
@@ -309,7 +318,7 @@ PomdpModelType const& BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefV
 template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
 void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::refineReachability(
     storm::Environment const& env, std::set<uint32_t> const& targetObservations, bool min, std::optional<std::string> rewardModelName,
-    storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result) {
+    storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result, std::optional<ValueType> discountFactor) {
     statistics.refinementSteps = 0;
     auto trivialPOMDPBounds = valueBounds.trivialPomdpValueBounds;
     // Set up exploration data
@@ -375,7 +384,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             underApproximation->setFMSchedValueList(valueBounds.fmSchedulerValueList);
         }
         buildUnderApproximation(env, targetObservations, min, rewardModelName.has_value(), false, underApproxHeuristicPar, underApproxBeliefManager,
-                                underApproximation, false);
+                                underApproximation, false, discountFactor);
         if (!underApproximation->hasComputedValues() || storm::utility::resources::isTerminate()) {
             return;
         }
@@ -518,54 +527,55 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         };
         STORM_LOG_INFO(printUnderInfo());
         std::shared_ptr<storm::models::sparse::Model<ValueType>> scheduledModel = underApproximation->getExploredMdp();
-        if (!options.useStateEliminationCutoff) {
-            storm::models::sparse::StateLabeling newLabeling(scheduledModel->getStateLabeling());
-            auto nrPreprocessingScheds = min ? underApproximation->getNrSchedulersForUpperBounds() : underApproximation->getNrSchedulersForLowerBounds();
-            for (uint64_t i = 0; i < nrPreprocessingScheds; ++i) {
-                newLabeling.addLabel("sched_" + std::to_string(i));
-            }
-            newLabeling.addLabel("cutoff");
-            newLabeling.addLabel("clipping");
-            newLabeling.addLabel("finite_mem");
-            newLabeling.addLabel("external_value");
+        if (underApproximation->hasSchedulerForExploredMdp()) {
+            if (!options.useStateEliminationCutoff) {
+                storm::models::sparse::StateLabeling newLabeling(scheduledModel->getStateLabeling());
+                auto nrPreprocessingScheds = min ? underApproximation->getNrSchedulersForUpperBounds() : underApproximation->getNrSchedulersForLowerBounds();
+                for (uint64_t i = 0; i < nrPreprocessingScheds; ++i) {
+                    newLabeling.addLabel("sched_" + std::to_string(i));
+                }
+                newLabeling.addLabel("cutoff");
+                newLabeling.addLabel("clipping");
+                newLabeling.addLabel("finite_mem");
+                newLabeling.addLabel("external_value");
 
-            auto transMatrix = scheduledModel->getTransitionMatrix();
-            for (uint64_t i = 0; i < scheduledModel->getNumberOfStates(); ++i) {
-                if (newLabeling.getStateHasLabel("truncated", i)) {
-                    uint64_t localChosenActionIndex = underApproximation->getSchedulerForExploredMdp()->getChoice(i).getDeterministicChoice();
-                    auto rowIndex = scheduledModel->getTransitionMatrix().getRowGroupIndices()[i];
-                    if (scheduledModel->getChoiceLabeling().getLabelsOfChoice(rowIndex + localChosenActionIndex).size() > 0) {
-                        auto label = *(scheduledModel->getChoiceLabeling().getLabelsOfChoice(rowIndex + localChosenActionIndex).begin());
-                        if (label.rfind("clip", 0) == 0) {
-                            newLabeling.addLabelToState("clipping", i);
-                            auto chosenRow = transMatrix.getRow(i, 0);
-                            auto candidateIndex = (chosenRow.end() - 1)->getColumn();
-                            transMatrix.makeRowDirac(transMatrix.getRowGroupIndices()[i], candidateIndex);
-                        } else if (label.rfind("mem_node", 0) == 0) {
-                            newLabeling.addLabelToState("finite_mem", i);
-                            newLabeling.addLabelToState("cutoff", i);
-                        } else {
-                            newLabeling.addLabelToState(label, i);
-                            newLabeling.addLabelToState("cutoff", i);
+                auto transMatrix = scheduledModel->getTransitionMatrix();
+                for (uint64_t i = 0; i < scheduledModel->getNumberOfStates(); ++i) {
+                    if (newLabeling.getStateHasLabel("truncated", i)) {
+                        uint64_t localChosenActionIndex = underApproximation->getSchedulerForExploredMdp()->getChoice(i).getDeterministicChoice();
+                        auto rowIndex = scheduledModel->getTransitionMatrix().getRowGroupIndices()[i];
+                        if (scheduledModel->getChoiceLabeling().getLabelsOfChoice(rowIndex + localChosenActionIndex).size() > 0) {
+                            auto label = *(scheduledModel->getChoiceLabeling().getLabelsOfChoice(rowIndex + localChosenActionIndex).begin());
+                            if (label.rfind("clip", 0) == 0) {
+                                newLabeling.addLabelToState("clipping", i);
+                                auto chosenRow = transMatrix.getRow(i, 0);
+                                auto candidateIndex = (chosenRow.end() - 1)->getColumn();
+                                transMatrix.makeRowDirac(transMatrix.getRowGroupIndices()[i], candidateIndex);
+                            } else if (label.rfind("mem_node", 0) == 0) {
+                                newLabeling.addLabelToState("finite_mem", i);
+                                newLabeling.addLabelToState("cutoff", i);
+                            } else {
+                                newLabeling.addLabelToState(label, i);
+                                newLabeling.addLabelToState("cutoff", i);
+                            }
                         }
                     }
                 }
+                newLabeling.removeLabel("truncated");
+                transMatrix.dropZeroEntries();
+                storm::storage::sparse::ModelComponents<ValueType> modelComponents(transMatrix, newLabeling);
+                if (scheduledModel->hasChoiceLabeling()) {
+                    modelComponents.choiceLabeling = scheduledModel->getChoiceLabeling();
+                }
+                storm::models::sparse::Mdp<ValueType> newMDP(modelComponents);
+                auto inducedMC = newMDP.applyScheduler(*(underApproximation->getSchedulerForExploredMdp()), true);
+                scheduledModel = std::static_pointer_cast<storm::models::sparse::Model<ValueType>>(inducedMC);
+            } else {
+                auto inducedMC = underApproximation->getExploredMdp()->applyScheduler(*(underApproximation->getSchedulerForExploredMdp()), true);
+                scheduledModel = std::static_pointer_cast<storm::models::sparse::Model<ValueType>>(inducedMC);
             }
-            newLabeling.removeLabel("truncated");
-
-            transMatrix.dropZeroEntries();
-            storm::storage::sparse::ModelComponents<ValueType> modelComponents(transMatrix, newLabeling);
-            if (scheduledModel->hasChoiceLabeling()) {
-                modelComponents.choiceLabeling = scheduledModel->getChoiceLabeling();
-            }
-            storm::models::sparse::Mdp<ValueType> newMDP(modelComponents);
-            auto inducedMC = newMDP.applyScheduler(*(underApproximation->getSchedulerForExploredMdp()), true);
-            scheduledModel = std::static_pointer_cast<storm::models::sparse::Model<ValueType>>(inducedMC);
-        } else {
-            auto inducedMC = underApproximation->getExploredMdp()->applyScheduler(*(underApproximation->getSchedulerForExploredMdp()), true);
-            scheduledModel = std::static_pointer_cast<storm::models::sparse::Model<ValueType>>(inducedMC);
+            result.schedulerAsMarkovChain = scheduledModel;
         }
-        result.schedulerAsMarkovChain = scheduledModel;
         if (min) {
             result.cutoffSchedulers = underApproximation->getUpperValueBoundSchedulers();
         } else {
@@ -577,7 +587,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
 template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
 void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::unfoldInteractively(
     storm::Environment const& env, std::set<uint32_t> const& targetObservations, bool min, std::optional<std::string> rewardModelName,
-    storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result) {
+    storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result, std::optional<ValueType> discountFactor) {
     statistics.refinementSteps = 0;
     interactiveResult = result;
     unfoldingStatus = Status::Uninitialized;
@@ -734,7 +744,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
 template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
 void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::unfoldInteractively(
     std::set<uint32_t> const& targetObservations, bool min, std::optional<std::string> rewardModelName,
-    storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result) {
+    storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result, std::optional<ValueType> discountFactor) {
     storm::Environment env;
     unfoldInteractively(env, targetObservations, min, rewardModelName, valueBounds, result);
 }
@@ -1047,7 +1057,7 @@ template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPTy
 bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::buildUnderApproximation(
     storm::Environment const& env, std::set<uint32_t> const& targetObservations, bool min, bool computeRewards, bool refine,
     HeuristicParameters const& heuristicParameters, std::shared_ptr<BeliefManagerType>& beliefManager, std::shared_ptr<ExplorerType>& underApproximation,
-    bool firstIteration) {
+    bool firstIteration, std::optional<typename PomdpModelType::ValueType> discountFactor) {
     statistics.underApproximationBuildTime.start();
 
     unfoldingStatus = Status::Exploring;
@@ -1310,7 +1320,13 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
     STORM_PRINT_AND_LOG("Finished exploring under-approximation MDP.\nStart analysis...\n");
     unfoldingStatus = Status::ModelExplorationFinished;
     statistics.underApproximationCheckTime.start();
-    underApproximation->computeValuesOfExploredMdp(env, min ? storm::solver::OptimizationDirection::Minimize : storm::solver::OptimizationDirection::Maximize);
+    if (discountFactor.has_value()) {
+        underApproximation->computeDiscountedTotalRewardsOfExploredMdp(
+            env, min ? storm::solver::OptimizationDirection::Minimize : storm::solver::OptimizationDirection::Maximize, discountFactor.value());
+    } else {
+        underApproximation->computeValuesOfExploredMdp(env,
+                                                       min ? storm::solver::OptimizationDirection::Minimize : storm::solver::OptimizationDirection::Maximize);
+    }
     statistics.underApproximationCheckTime.stop();
     if (underApproximation->getExploredMdp()->getStateLabeling().getStates("truncated").getNumberOfSetBits() > 0) {
         statistics.nrTruncatedStates = underApproximation->getExploredMdp()->getStateLabeling().getStates("truncated").getNumberOfSetBits();

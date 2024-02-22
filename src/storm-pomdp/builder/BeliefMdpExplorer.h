@@ -182,9 +182,13 @@ class BeliefMdpExplorer {
 
     void computeValuesOfExploredMdp(storm::Environment const &env, storm::solver::OptimizationDirection const &dir);
 
+    void computeDiscountedTotalRewardsOfExploredMdp(storm::Environment const &env, storm::solver::OptimizationDirection const &dir, ValueType discountFactor);
+
     bool hasComputedValues() const;
 
     bool hasFMSchedulerValues() const;
+
+    bool hasSchedulerForExploredMdp() const;
 
     std::vector<ValueType> const &getValuesOfExploredMdp() const;
 
@@ -321,7 +325,7 @@ class BeliefMdpExplorer {
     std::vector<ValueType> values;  // Contains an estimate during building and the actual result after a check has performed
     std::optional<storm::storage::BitVector> optimalChoices;
     std::optional<storm::storage::BitVector> optimalChoicesReachableMdpStates;
-    std::shared_ptr<storm::storage::Scheduler<ValueType>> scheduler;
+    std::shared_ptr<storm::storage::Scheduler<ValueType>> scheduler = nullptr;
 
     // The current status of this explorer
     ExplorationHeuristic explHeuristic;

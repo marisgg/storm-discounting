@@ -142,9 +142,11 @@ class BeliefExplorationPomdpModelChecker {
      * @param result the struct to store results
      */
     void unfoldInteractively(storm::Environment const& env, std::set<uint32_t> const& targetObservations, bool min, std::optional<std::string> rewardModelName,
-                             storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result);
+                             storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result,
+                             std::optional<ValueType> discountFactor = std::nullopt);
     void unfoldInteractively(std::set<uint32_t> const& targetObservations, bool min, std::optional<std::string> rewardModelName,
-                             storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result);
+                             storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result,
+                             std::optional<ValueType> discountFactor = std::nullopt);
 
     /**
      * Pauses a running interactive unfolding
@@ -274,7 +276,8 @@ class BeliefExplorationPomdpModelChecker {
      * @return A struct containing the final over-approximation (overApproxValue) and under-approximation (underApproxValue) values
      */
     void refineReachability(storm::Environment const& env, std::set<uint32_t> const& targetObservations, bool min, std::optional<std::string> rewardModelName,
-                            storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result);
+                            storm::pomdp::modelchecker::POMDPValueBounds<ValueType> const& valueBounds, Result& result,
+                            std::optional<ValueType> discountFactor = std::nullopt);
 
     /**
      * Builds and checks an MDP that over-approximates the POMDP behavior, i.e. provides an upper bound for maximizing and a lower bound for minimizing
@@ -308,7 +311,8 @@ class BeliefExplorationPomdpModelChecker {
      */
     bool buildUnderApproximation(storm::Environment const& env, std::set<uint32_t> const& targetObservations, bool min, bool computeRewards, bool refine,
                                  HeuristicParameters const& heuristicParameters, std::shared_ptr<BeliefManagerType>& beliefManager,
-                                 std::shared_ptr<ExplorerType>& underApproximation, bool interactive);
+                                 std::shared_ptr<ExplorerType>& underApproximation, bool interactive,
+                                 std::optional<typename PomdpModelType::ValueType> discountFactor = std::nullopt);
 
     /**
      * Clips the belief with the given state ID to a belief grid by clipping its direct successor ("grid clipping")

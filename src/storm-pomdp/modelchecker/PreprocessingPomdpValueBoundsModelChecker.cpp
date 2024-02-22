@@ -188,8 +188,8 @@ PreprocessingPomdpValueBoundsModelChecker<ValueType>::computeValuesForRandomMemo
 template<typename ValueType>
 typename PreprocessingPomdpValueBoundsModelChecker<ValueType>::ValueBounds PreprocessingPomdpValueBoundsModelChecker<ValueType>::getValueBounds(
     storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info) {
-    STORM_LOG_THROW(info.isNonNestedReachabilityProbability() || info.isNonNestedExpectedRewardFormula(), storm::exceptions::NotSupportedException,
-                    "The property type is not supported for this analysis.");
+    STORM_LOG_THROW(info.isNonNestedReachabilityProbability() || info.isNonNestedExpectedRewardFormula() || info.isDiscountedTotalRewardFormula(),
+                    storm::exceptions::NotSupportedException, "The property type is not supported for this analysis.");
 
     // Compute the values on the fully observable MDP
     // We need an actual MDP so that we can apply schedulers below.

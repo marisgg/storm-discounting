@@ -933,6 +933,39 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::computeValuesOfExploredMdp(s
 }
 
 template<typename PomdpType, typename BeliefValueType>
+void BeliefMdpExplorer<PomdpType, BeliefValueType>::computeDiscountedTotalRewardsOfExploredMdp(storm::Environment const &env,
+                                                                                               storm::solver::OptimizationDirection const &dir,
+                                                                                               ValueType discountFactor) {
+    STORM_LOG_ASSERT(status == Status::ModelFinished, "Method call is invalid in current status.");
+    STORM_LOG_ASSERT(exploredMdp, "Tried to compute values but the MDP is not explored");
+    std::string propertyString = "R";
+    propertyString += storm::solver::minimize(dir) ? "min" : "max";
+    propertyString += "=? [C{";
+    propertyString += storm::utility::to_string(discountFactor) + "}]";
+    std::vector<storm::jani::Property> propertyVector = storm::api::parseProperties(propertyString);
+    auto property = storm::api::extractFormulasFromProperties(propertyVector).front();
+
+    auto task = storm::api::createTask<ValueType>(property, false);
+    task.setProduceSchedulers();
+
+    std::unique_ptr<storm::modelchecker::CheckResult> res(storm::api::verifyWithSparseEngine<ValueType>(env, exploredMdp, task));
+    if (res) {
+        values = std::move(res->asExplicitQuantitativeCheckResult<ValueType>().getValueVector());
+        if (res->asExplicitQuantitativeCheckResult<ValueType>().hasScheduler()) {
+            scheduler = std::make_shared<storm::storage::Scheduler<ValueType>>(res->asExplicitQuantitativeCheckResult<ValueType>().getScheduler());
+        }
+        STORM_LOG_WARN_COND_DEBUG(storm::utility::vector::compareElementWise(lowerValueBounds, values, std::less_equal<ValueType>()),
+                                  "Computed values are smaller than the lower bound.");
+        STORM_LOG_WARN_COND_DEBUG(storm::utility::vector::compareElementWise(upperValueBounds, values, std::greater_equal<ValueType>()),
+                                  "Computed values are larger than the upper bound.");
+    } else {
+        STORM_LOG_ASSERT(storm::utility::resources::isTerminate(), "Empty check result!");
+        STORM_LOG_ERROR("No result obtained while checking.");
+    }
+    status = Status::ModelChecked;
+}
+
+template<typename PomdpType, typename BeliefValueType>
 bool BeliefMdpExplorer<PomdpType, BeliefValueType>::hasComputedValues() const {
     return status == Status::ModelChecked;
 }
@@ -942,6 +975,11 @@ std::vector<typename BeliefMdpExplorer<PomdpType, BeliefValueType>::ValueType> c
     const {
     STORM_LOG_ASSERT(status == Status::ModelChecked, "Method call is invalid in current status.");
     return values;
+}
+
+template<typename PomdpType, typename BeliefValueType>
+bool BeliefMdpExplorer<PomdpType, BeliefValueType>::hasSchedulerForExploredMdp() const {
+    return scheduler != nullptr;
 }
 
 template<typename PomdpType, typename BeliefValueType>
