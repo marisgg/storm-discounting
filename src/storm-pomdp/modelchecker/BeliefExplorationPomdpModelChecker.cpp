@@ -527,6 +527,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             newLabeling.addLabel("cutoff");
             newLabeling.addLabel("clipping");
             newLabeling.addLabel("finite_mem");
+            newLabeling.addLabel("external_value");
 
             auto transMatrix = scheduledModel->getTransitionMatrix();
             for (uint64_t i = 0; i < scheduledModel->getNumberOfStates(); ++i) {
@@ -636,6 +637,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                     newLabeling.addLabel("cutoff");
                     newLabeling.addLabel("clipping");
                     newLabeling.addLabel("finite_mem");
+                    newLabeling.addLabel("external_value");
 
                     auto transMatrix = scheduledModel->getTransitionMatrix();
                     for (uint64_t i = 0; i < scheduledModel->getNumberOfStates(); ++i) {
@@ -1104,7 +1106,7 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             stateStored = true;
             if (unfoldingControl == UnfoldingControl::PauseAndComputeCutoffValues) {
                 beliefExchange.idToBeliefMap = underApproximation->getBeliefIdToBeliefMap(underApproximation->getBeliefIdsOfStatesToExplore());
-                beliefExchange.beliefIdToValueMap.clear();
+                //beliefExchange.beliefIdToValueMap.clear();
                 setUnfoldingToWait();
                 while (unfoldingControl == UnfoldingControl::WaitForCutoffValues)
                     ;
