@@ -996,11 +996,11 @@ MDPSparseModelCheckingHelperReturnType<SolutionType> SparseMdpPrctlHelper<ValueT
     b = rewardModel.getTotalRewardVector(transitionMatrix);
     storm::modelchecker::helper::DiscountingHelper<ValueType> discountingHelper(transitionMatrix, produceScheduler);
     discountingHelper.setUpViOperator();
-    
+
     discountingHelper.solveWithDiscountedValueIteration(env, goal.direction(), x, b, discountFactor);
-    
+
     std::unique_ptr<storm::storage::Scheduler<SolutionType>> scheduler;
-    if(produceScheduler){
+    if (produceScheduler) {
         scheduler = std::make_unique<storm::storage::Scheduler<ValueType>>(discountingHelper.computeScheduler());
     }
     STORM_LOG_ASSERT(!produceScheduler || scheduler, "Expected that a scheduler was obtained.");

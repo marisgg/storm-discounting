@@ -1106,7 +1106,6 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             stateStored = true;
             if (unfoldingControl == UnfoldingControl::PauseAndComputeCutoffValues) {
                 beliefExchange.idToBeliefMap = underApproximation->getBeliefIdToBeliefMap(underApproximation->getBeliefIdsOfStatesToExplore());
-                //beliefExchange.beliefIdToValueMap.clear();
                 setUnfoldingToWait();
                 while (unfoldingControl == UnfoldingControl::WaitForCutoffValues)
                     ;
