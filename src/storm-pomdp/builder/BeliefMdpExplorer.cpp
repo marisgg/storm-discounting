@@ -901,13 +901,14 @@ typename BeliefMdpExplorer<PomdpType, BeliefValueType>::ValueType BeliefMdpExplo
 
 template<typename PomdpType, typename BeliefValueType>
 std::pair<bool, typename BeliefMdpExplorer<PomdpType, BeliefValueType>::ValueType>
-BeliefMdpExplorer<PomdpType, BeliefValueType>::computeFMSchedulerValueForMemoryNode(BeliefId const &beliefId, uint64_t memoryNode) const {
+BeliefMdpExplorer<PomdpType, BeliefValueType>::computeFMSchedulerValueForMemoryNode(BeliefId const &beliefId, uint64_t index, uint64_t memoryNode) const {
     STORM_LOG_ASSERT(!fmSchedulerValueList.empty(), "Requested finite memory scheduler value bounds but none were available.");
+    STORM_LOG_ASSERT(index < fmSchedulerValueList.size(), "Requested finite memory scheduler value bounds for index " << index << "not available.");
     auto obs = beliefManager->getBeliefObservation(beliefId);
     STORM_LOG_ASSERT(fmSchedulerValueList.size() > obs, "Requested value bound for observation " << obs << " not available.");
-    STORM_LOG_ASSERT(fmSchedulerValueList.at(obs).size() > memoryNode,
+    STORM_LOG_ASSERT(fmSchedulerValueList.at(index).at(obs).size() > memoryNode,
                      "Requested value bound for observation " << obs << " and memory node " << memoryNode << " not available.");
-    return beliefManager->getWeightedSum(beliefId, fmSchedulerValueList.at(obs).at(memoryNode));
+    return beliefManager->getWeightedSum(beliefId, fmSchedulerValueList.at(index).at(obs).at(memoryNode));
 }
 
 template<typename PomdpType, typename BeliefValueType>
@@ -1329,13 +1330,21 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::setExtremeValueBound(storm::
 }
 
 template<typename PomdpType, typename BeliefValueType>
-void BeliefMdpExplorer<PomdpType, BeliefValueType>::setFMSchedValueList(std::vector<std::vector<std::unordered_map<uint64_t, ValueType>>> valueList) {
-    fmSchedulerValueList = valueList;
+void BeliefMdpExplorer<PomdpType, BeliefValueType>::setFMSchedValueList(std::vector<std::vector<std::unordered_map<uint64_t, ValueType>>> valueList,
+                                                                        uint64_t index) {
+    STORM_LOG_ASSERT(index < fmSchedulerValueList.size(), "Requested value list with index " << index << " not available.");
+    fmSchedulerValueList[index] = valueList;
 }
 
 template<typename PomdpType, typename BeliefValueType>
-uint64_t BeliefMdpExplorer<PomdpType, BeliefValueType>::getNrOfMemoryNodesForObservation(uint32_t observation) const {
-    return fmSchedulerValueList.at(observation).size();
+uint64_t BeliefMdpExplorer<PomdpType, BeliefValueType>::addFMSchedValueList(std::vector<std::vector<std::unordered_map<uint64_t, ValueType>>> valueList) {
+    fmSchedulerValueList.push_back(valueList);
+    return fmSchedulerValueList.size() - 1;
+}
+
+template<typename PomdpType, typename BeliefValueType>
+uint64_t BeliefMdpExplorer<PomdpType, BeliefValueType>::getNrOfMemoryNodesForObservation(uint64_t index, uint32_t observation) const {
+    return fmSchedulerValueList.at(index).at(observation).size();
 }
 
 template<typename PomdpType, typename BeliefValueType>
@@ -1447,6 +1456,11 @@ BeliefMdpExplorer<PomdpType, BeliefValueType>::getBeliefIdToBeliefMap(
         result[beliefId] = beliefManager->getBeliefAsMap(beliefId);
     }
     return result;
+}
+
+template<typename PomdpType, typename BeliefValueType>
+uint64_t BeliefMdpExplorer<PomdpType, BeliefValueType>::getNrOfFMSchedulers() const {
+    return fmSchedulerValueList.size();
 }
 
 template class BeliefMdpExplorer<storm::models::sparse::Pomdp<double>>;

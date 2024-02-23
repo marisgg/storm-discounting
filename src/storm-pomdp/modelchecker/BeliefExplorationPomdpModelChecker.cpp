@@ -381,7 +381,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             underApproximation->setExtremeValueBound(valueBounds.extremePomdpValueBound);
         }
         if (!valueBounds.fmSchedulerValueList.empty()) {
-            underApproximation->setFMSchedValueList(valueBounds.fmSchedulerValueList);
+            underApproximation->addFMSchedValueList(valueBounds.fmSchedulerValueList);
         }
         buildUnderApproximation(env, targetObservations, min, rewardModelName.has_value(), false, underApproxHeuristicPar, underApproxBeliefManager,
                                 underApproximation, false, discountFactor);
@@ -536,7 +536,9 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                 }
                 newLabeling.addLabel("cutoff");
                 newLabeling.addLabel("clipping");
-                newLabeling.addLabel("finite_mem");
+                for (uint64_t i = 0; i < underApproximation->getNrOfFMSchedulers(); ++i) {
+                    newLabeling.addLabel("finite_mem_" + std::to_string(i));
+                }
                 newLabeling.addLabel("external_value");
 
                 auto transMatrix = scheduledModel->getTransitionMatrix();
@@ -551,8 +553,8 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                                 auto chosenRow = transMatrix.getRow(i, 0);
                                 auto candidateIndex = (chosenRow.end() - 1)->getColumn();
                                 transMatrix.makeRowDirac(transMatrix.getRowGroupIndices()[i], candidateIndex);
-                            } else if (label.rfind("mem_node", 0) == 0) {
-                                newLabeling.addLabelToState("finite_mem", i);
+                            } else if (label.rfind("fsc_", 0) == 0) {
+                                newLabeling.addLabelToState("finite_mem_" + label.substr(4, 1), i);
                                 newLabeling.addLabelToState("cutoff", i);
                             } else {
                                 newLabeling.addLabelToState(label, i);
@@ -616,7 +618,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
     }
 
     if (!valueBounds.fmSchedulerValueList.empty()) {
-        interactiveUnderApproximationExplorer->setFMSchedValueList(valueBounds.fmSchedulerValueList);
+        interactiveUnderApproximationExplorer->addFMSchedValueList(valueBounds.fmSchedulerValueList);
     }
 
     // Start iteration
@@ -646,7 +648,9 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                     }
                     newLabeling.addLabel("cutoff");
                     newLabeling.addLabel("clipping");
-                    newLabeling.addLabel("finite_mem");
+                    for (uint64_t i = 0; i < interactiveUnderApproximationExplorer->getNrOfFMSchedulers(); ++i) {
+                        newLabeling.addLabel("finite_mem_" + std::to_string(i));
+                    }
                     newLabeling.addLabel("external_value");
 
                     auto transMatrix = scheduledModel->getTransitionMatrix();
@@ -663,8 +667,8 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                                     auto chosenRow = transMatrix.getRow(i, 0);
                                     auto candidateIndex = (chosenRow.end() - 1)->getColumn();
                                     transMatrix.makeRowDirac(transMatrix.getRowGroupIndices()[i], candidateIndex);
-                                } else if (label.rfind("mem_node", 0) == 0) {
-                                    newLabeling.addLabelToState("finite_mem", i);
+                                } else if (label.rfind("fsc_", 0) == 0) {
+                                    newLabeling.addLabelToState("finite_mem_" + label.substr(4, 1), i);
                                     newLabeling.addLabelToState("cutoff", i);
                                 } else {
                                     newLabeling.addLabelToState(label, i);
@@ -1269,32 +1273,35 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                 }
                 if (underApproximation->hasFMSchedulerValues()) {
                     uint64_t transitionNr = 0;
-                    for (uint64_t i = 0; i < underApproximation->getNrOfMemoryNodesForObservation(currObservation); ++i) {
-                        auto resPair = underApproximation->computeFMSchedulerValueForMemoryNode(currId, i);
-                        ValueType cutOffValue;
-                        if (resPair.first) {
-                            cutOffValue = resPair.second;
-                        } else {
-                            STORM_LOG_DEBUG("Skipped cut-off of belief with ID " << currId << " with finite memory scheduler in memory node " << i
-                                                                                 << ". Missing values.");
-                            continue;
-                        }
-                        if (computeRewards) {
-                            if (cutOffValue != storm::utility::infinity<ValueType>()) {
-                                underApproximation->addTransitionsToExtraStates(addedActions + transitionNr, storm::utility::one<ValueType>());
-                                underApproximation->addRewardToCurrentState(addedActions + transitionNr, cutOffValue);
+                    for (uint64_t fscIndex = 0; fscIndex < underApproximation->getNrOfFMSchedulers(); ++fscIndex) {
+                        for (uint64_t i = 0; i < underApproximation->getNrOfMemoryNodesForObservation(fscIndex, currObservation); ++i) {
+                            auto resPair = underApproximation->computeFMSchedulerValueForMemoryNode(currId, fscIndex, i);
+                            ValueType cutOffValue;
+                            if (resPair.first) {
+                                cutOffValue = resPair.second;
                             } else {
-                                underApproximation->addTransitionsToExtraStates(addedActions + transitionNr, storm::utility::zero<ValueType>(),
-                                                                                storm::utility::one<ValueType>());
+                                STORM_LOG_DEBUG("Skipped cut-off of belief with ID " << currId << " with finite memory scheduler " << fscIndex
+                                                                                     << " in memory node " << i << ". Missing values.");
+                                continue;
                             }
-                        } else {
-                            underApproximation->addTransitionsToExtraStates(addedActions + transitionNr, cutOffValue,
-                                                                            storm::utility::one<ValueType>() - cutOffValue);
+                            if (computeRewards) {
+                                if (cutOffValue != storm::utility::infinity<ValueType>()) {
+                                    underApproximation->addTransitionsToExtraStates(addedActions + transitionNr, storm::utility::one<ValueType>());
+                                    underApproximation->addRewardToCurrentState(addedActions + transitionNr, cutOffValue);
+                                } else {
+                                    underApproximation->addTransitionsToExtraStates(addedActions + transitionNr, storm::utility::zero<ValueType>(),
+                                                                                    storm::utility::one<ValueType>());
+                                }
+                            } else {
+                                underApproximation->addTransitionsToExtraStates(addedActions + transitionNr, cutOffValue,
+                                                                                storm::utility::one<ValueType>() - cutOffValue);
+                            }
+                            if (pomdp().hasChoiceLabeling()) {
+                                underApproximation->addChoiceLabelToCurrentState(addedActions + transitionNr,
+                                                                                 "fsc_" + std::to_string(fscIndex) + "_mem_node_" + std::to_string(i));
+                            }
+                            ++transitionNr;
                         }
-                        if (pomdp().hasChoiceLabeling()) {
-                            underApproximation->addChoiceLabelToCurrentState(addedActions + transitionNr, "mem_node_" + std::to_string(i));
-                        }
-                        ++transitionNr;
                     }
                 }
             }
