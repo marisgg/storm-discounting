@@ -74,6 +74,8 @@ class BeliefExplorationSettings : public ModuleSettings {
 
     bool isStateEliminationCutoffSet() const;
 
+    std::string getBeliefMdpAsDrnPath() const;
+
     template<typename ValueType>
     void setValuesInOptionsStruct(storm::pomdp::modelchecker::BeliefExplorationPomdpModelCheckerOptions<ValueType>& options) const;
 

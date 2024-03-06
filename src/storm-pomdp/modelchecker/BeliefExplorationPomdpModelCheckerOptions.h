@@ -57,6 +57,8 @@ struct BeliefExplorationPomdpModelCheckerOptions {
     bool dynamicTriangulation = true;  // Sets whether the triangulation is done in a dynamic way (yielding more precise triangulations)
 
     storm::builder::ExplorationHeuristic explorationHeuristic = storm::builder::ExplorationHeuristic::BreadthFirst;
+
+    std::string exportBeliefMdpAsDrnPath = "";
 };
 }  // namespace modelchecker
 }  // namespace pomdp

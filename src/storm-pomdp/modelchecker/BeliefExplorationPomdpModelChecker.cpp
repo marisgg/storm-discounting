@@ -15,6 +15,8 @@
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/utility/vector.h"
 
+#include "storm/api/export.h"
+
 #include "storm/environment/Environment.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/storage/Scheduler.h"
@@ -376,6 +378,12 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         }
         buildUnderApproximation(env, targetObservations, min, rewardModelName.has_value(), false, underApproxHeuristicPar, underApproxBeliefManager,
                                 underApproximation, false);
+        if (!options.exportBeliefMdpAsDrnPath.empty()) {
+            STORM_LOG_WARN_COND(!options.refine, "Exporting the belief MDP for refinement only exports the belief MDP computed in the first step.");
+            STORM_PRINT_AND_LOG("Exporting belief MDP to " << options.exportBeliefMdpAsDrnPath << ".\n");
+            storm::api::exportSparseModelAsDrn(std::static_pointer_cast<storm::models::sparse::Model<ValueType>>(underApproximation->getExploredMdp()),
+                                               options.exportBeliefMdpAsDrnPath);
+        }
         if (!underApproximation->hasComputedValues() || storm::utility::resources::isTerminate()) {
             return;
         }

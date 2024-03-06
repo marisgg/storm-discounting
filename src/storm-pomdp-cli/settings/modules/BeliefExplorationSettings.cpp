@@ -27,6 +27,7 @@ const std::string triangulationModeOption = "triangulationmode";
 const std::string clippingOption = "use-clipping";
 const std::string cutZeroGapOption = "cut-zero-gap";
 const std::string stateEliminationCutoffOption = "state-elimination-cutoff";
+const std::string exportBeliefMdpAsDrnOption = "export-bel-mdp-drn";
 
 BeliefExplorationSettings::BeliefExplorationSettings() : ModuleSettings(moduleName) {
     this->addOption(
@@ -159,6 +160,12 @@ BeliefExplorationSettings::BeliefExplorationSettings() : ModuleSettings(moduleNa
     this->addOption(storm::settings::OptionBuilder(moduleName, stateEliminationCutoffOption, false,
                                                    "If this is set, an additional unfolding step for cut-off beliefs is performed.")
                         .build());
+    this->addOption(
+        storm::settings::OptionBuilder(moduleName, exportBeliefMdpAsDrnOption, false, "Exports the explored belief MDP as a DRN file.")
+            .addArgument(storm::settings::ArgumentBuilder::createStringArgument("filename", "The name of the file to which the model is to be written.")
+                             .setDefaultValueString("")
+                             .build())
+            .build());
 }
 
 bool BeliefExplorationSettings::isRefineSet() const {
@@ -249,6 +256,10 @@ bool BeliefExplorationSettings::isCutZeroGapSet() const {
     return this->getOption(cutZeroGapOption).getHasOptionBeenSet();
 }
 
+std::string BeliefExplorationSettings::getBeliefMdpAsDrnPath() const {
+    return this->getOption(exportBeliefMdpAsDrnOption).getArgumentByName("filename").getValueAsString();
+}
+
 template<typename ValueType>
 void BeliefExplorationSettings::setValuesInOptionsStruct(storm::pomdp::modelchecker::BeliefExplorationPomdpModelCheckerOptions<ValueType>& options) const {
     options.refine = isRefineSet();
@@ -282,6 +293,8 @@ void BeliefExplorationSettings::setValuesInOptionsStruct(storm::pomdp::modelchec
     }
     options.dynamicTriangulation = isDynamicTriangulationModeSet();
     options.cutZeroGap = isCutZeroGapSet();
+
+    options.exportBeliefMdpAsDrnPath = getBeliefMdpAsDrnPath();
 }
 
 template void BeliefExplorationSettings::setValuesInOptionsStruct<double>(
