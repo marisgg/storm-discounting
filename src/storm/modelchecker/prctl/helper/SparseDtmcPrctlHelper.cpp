@@ -428,7 +428,7 @@ std::vector<ValueType> SparseDtmcPrctlHelper<ValueType, RewardModelType>::comput
 
     std::vector<ValueType> x = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
     b = rewardModel.getTotalRewardVector(transitionMatrix);
-    storm::modelchecker::helper::DiscountingHelper<ValueType> discountingHelper(transitionMatrix);
+    storm::modelchecker::helper::DiscountingHelper<ValueType, true> discountingHelper(transitionMatrix);
     discountingHelper.setUpViOperator();
     discountingHelper.solveWithDiscountedValueIteration(env, std::nullopt, x, b, discountFactor);
     return std::vector<ValueType>(std::move(x));

@@ -10,7 +10,7 @@ namespace storm {
 class Environment;
 namespace modelchecker {
 namespace helper {
-template<typename ValueType>
+template<typename ValueType, bool TrivialRowGrouping = false>
 class DiscountingHelper : public SingleValueModelCheckerHelper<ValueType, storm::models::ModelRepresentation::Sparse> {
    public:
     DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A);
@@ -40,7 +40,7 @@ class DiscountingHelper : public SingleValueModelCheckerHelper<ValueType, storm:
 
     void extractScheduler(std::vector<ValueType>& x, std::vector<ValueType> const& b, OptimizationDirection const& dir, bool robust) const;
 
-    mutable std::shared_ptr<storm::solver::helper::ValueIterationOperator<ValueType, false>> viOperator;
+    mutable std::shared_ptr<storm::solver::helper::ValueIterationOperator<ValueType, TrivialRowGrouping>> viOperator;
     mutable std::unique_ptr<std::vector<ValueType>> auxiliaryRowGroupVector;
 
     mutable boost::optional<storm::utility::ProgressMeasurement> progressMeasurement;
