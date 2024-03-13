@@ -1453,7 +1453,9 @@ BeliefMdpExplorer<PomdpType, BeliefValueType>::getBeliefIdToBeliefMap(
     std::vector<typename BeliefMdpExplorer<PomdpType, BeliefValueType>::BeliefId> beliefIds) const {
     std::unordered_map<BeliefId, std::unordered_map<BeliefId, BeliefValueType>> result;
     for (auto const &beliefId : beliefIds) {
-        result[beliefId] = beliefManager->getBeliefAsMap(beliefId);
+        if (beliefId != beliefManager->noId()) {
+            result[beliefId] = beliefManager->getBeliefAsMap(beliefId);
+        }
     }
     return result;
 }

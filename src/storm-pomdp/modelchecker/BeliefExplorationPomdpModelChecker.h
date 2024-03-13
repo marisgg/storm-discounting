@@ -71,6 +71,10 @@ class BeliefExplorationPomdpModelChecker {
     struct BeliefExchange {
         std::unordered_map<uint64_t, std::unordered_map<uint64_t, BeliefValueType>> idToBeliefMap;
         std::unordered_map<uint64_t, ValueType> beliefIdToValueMap;
+
+        std::unordered_map<uint64_t, ValueType> beliefIdToOverApproxValueMap;
+
+        uint64_t overApproxResolution;
     };
 
     /**
@@ -211,6 +215,10 @@ class BeliefExplorationPomdpModelChecker {
     void setExchangeValueForBelief(uint64_t beliefId, ValueType value);
 
     std::unordered_map<uint64_t, std::unordered_map<uint64_t, BeliefValueType>> getExchangeBeliefMap();
+
+    std::unordered_map<uint64_t, ValueType> getExchangeValueMap();
+
+    std::unordered_map<uint64_t, ValueType> getExchangeOverApproximationMap();
 
    private:
     /* Struct Definition(s) */
@@ -369,6 +377,8 @@ class BeliefExplorationPomdpModelChecker {
      */
     void setUnfoldingControl(UnfoldingControl newUnfoldingControl);
 
+    BeliefMDPType triangulateBeliefWithOverApproxValues(std::unordered_map<uint64_t, BeliefValueType> const& belief, BeliefValueType const& resolution);
+
     /* Variables */
 
     Statistics statistics;
@@ -383,6 +393,8 @@ class BeliefExplorationPomdpModelChecker {
     storm::pomdp::modelchecker::POMDPValueBounds<ValueType> pomdpValueBounds;
 
     std::shared_ptr<ExplorerType> interactiveUnderApproximationExplorer;
+
+    std::optional<BeliefExchange> overApproxBeliefExchange;
 
     Status unfoldingStatus;
     UnfoldingControl unfoldingControl;

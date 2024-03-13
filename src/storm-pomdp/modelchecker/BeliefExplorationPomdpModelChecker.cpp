@@ -607,6 +607,45 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         underApproxBeliefManager->setRewardModel(rewardModelName);
     }
 
+    if (options.discretize) {
+        // Setup and build first OverApproximation
+        std::vector<BeliefValueType> observationResolutionVector =
+            std::vector<BeliefValueType>(pomdp().getNrObservations(), storm::utility::convertNumber<BeliefValueType>(options.resolutionInit));
+        std::shared_ptr<BeliefManagerType> overApproxBeliefManager = std::make_shared<BeliefManagerType>(
+            pomdp(), storm::utility::convertNumber<BeliefValueType>(options.numericPrecision), BeliefManagerType::TriangulationMode::Static);
+        if (rewardModelName) {
+            overApproxBeliefManager->setRewardModel(rewardModelName);
+        }
+        std::shared_ptr<ExplorerType> overApproximation =
+            std::make_shared<ExplorerType>(overApproxBeliefManager, trivialPOMDPBounds, storm::builder::ExplorationHeuristic::BreadthFirst);
+        HeuristicParameters overApproxHeuristicPar{};
+        overApproxHeuristicPar.gapThreshold = options.gapThresholdInit;
+        overApproxHeuristicPar.observationThreshold = options.obsThresholdInit;
+        overApproxHeuristicPar.optimalChoiceValueEpsilon = options.optimalChoiceValueThresholdInit;
+        overApproxHeuristicPar.sizeThreshold = options.sizeThresholdInit;
+
+        buildOverApproximation(env, targetObservations, min, rewardModelName.has_value(), false, overApproxHeuristicPar, observationResolutionVector,
+                               overApproxBeliefManager, overApproximation);
+        if (storm::utility::resources::isTerminate()) {
+            return;
+        } else if (!overApproximation->hasComputedValues()) {
+            STORM_PRINT_AND_LOG("Over-approximation did not yield values. Continue with interactive unfolding.\n");
+        } else {
+            overApproxBeliefExchange = BeliefExchange();
+            overApproxBeliefExchange.value().idToBeliefMap = overApproximation->getBeliefIdToBeliefMap(overApproximation->getBeliefsInMdp());
+            for (uint64_t i = 0; i < overApproximation->getExploredMdp()->getNumberOfStates(); ++i) {
+                if (overApproximation->getBeliefId(i) != std::numeric_limits<uint64_t>::max()) {
+                    overApproxBeliefExchange.value().beliefIdToOverApproxValueMap[overApproximation->getBeliefId(i)] =
+                        overApproximation->getValuesOfExploredMdp().at(i);
+                }
+            }
+            overApproxBeliefExchange->overApproxResolution = options.resolutionInit;
+            ValueType const& newValue = overApproximation->getComputedValueAtInitialState();
+
+            STORM_LOG_DEBUG("Over-approx result obtained. Value is '" << newValue << "'.\n");
+        }
+    }
+
     // set up belief MDP explorer
     interactiveUnderApproximationExplorer = std::make_shared<ExplorerType>(underApproxBeliefManager, trivialPOMDPBounds, options.explorationHeuristic);
     underApproxHeuristicPar.gapThreshold = options.gapThresholdInit;
@@ -1120,6 +1159,17 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             stateStored = true;
             if (unfoldingControl == UnfoldingControl::PauseAndComputeCutoffValues) {
                 beliefExchange.idToBeliefMap = underApproximation->getBeliefIdToBeliefMap(underApproximation->getBeliefIdsOfStatesToExplore());
+                // If there has been an over-approximation, transfer the values
+                if (overApproxBeliefExchange.has_value()) {
+                    double resolution = overApproxBeliefExchange->overApproxResolution;
+                    auto resolutionInBeliefValueType = storm::utility::convertNumber<BeliefValueType>(resolution);
+                    for (auto const& entry : beliefExchange.idToBeliefMap) {
+                        auto triangulationValue = triangulateBeliefWithOverApproxValues(entry.second, resolutionInBeliefValueType);
+                        if (triangulationValue != storm::utility::infinity<BeliefMDPType>()) {
+                            beliefExchange.beliefIdToOverApproxValueMap[entry.first] = triangulationValue;
+                        }
+                    }
+                }
                 setUnfoldingToWait();
                 while (unfoldingControl == UnfoldingControl::WaitForCutoffValues)
                     ;
@@ -1612,6 +1662,97 @@ template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPTy
 std::unordered_map<uint64_t, std::unordered_map<uint64_t, BeliefValueType>>
 BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::getExchangeBeliefMap() {
     return beliefExchange.idToBeliefMap;
+}
+
+template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
+std::unordered_map<uint64_t, BeliefMDPType> BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::getExchangeValueMap() {
+    return beliefExchange.beliefIdToValueMap;
+}
+
+template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
+std::unordered_map<uint64_t, BeliefMDPType>
+BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::getExchangeOverApproximationMap() {
+    return beliefExchange.beliefIdToOverApproxValueMap;
+}
+
+template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
+BeliefMDPType BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::triangulateBeliefWithOverApproxValues(
+    std::unordered_map<uint64_t, BeliefValueType> const& belief, BeliefValueType const& resolution) {
+    STORM_LOG_ASSERT(resolution != 0, "Invalid resolution: 0");
+    STORM_LOG_ASSERT(storm::utility::isInteger(resolution), "Expected an integer resolution");
+    STORM_LOG_ASSERT(overApproxBeliefExchange.has_value(), "Over-Approximation Belief Exchange is not set");
+    for (auto const& entry : overApproxBeliefExchange.value().idToBeliefMap) {
+        if (entry.second == belief) {
+            return overApproxBeliefExchange.value().beliefIdToOverApproxValueMap.at(entry.first);
+        }
+    }
+    bool firstValue = true;
+    BeliefMDPType result;
+    uint64_t numEntries = belief.size();
+    // This is the Freudenthal Triangulation as described in Lovejoy (a whole lotta math)
+    // Probabilities will be triangulated to values in 0/N, 1/N, 2/N, ..., N/N
+    // Variable names are mostly based on the paper
+    // However, we speed this up a little by exploiting that belief states usually have sparse support (i.e. numEntries is much smaller than
+    // pomdp.getNumberOfStates()). Initialize diffs and the first row of the 'qs' matrix (aka v)
+    std::set<typename BeliefManagerType::FreudenthalDiff, std::greater<>> sorted_diffs;  // d (and p?) in the paper
+    std::vector<BeliefValueType> qsRow;                                                  // Row of the 'qs' matrix from the paper (initially corresponds to v
+    qsRow.reserve(numEntries);
+    std::vector<uint64_t> toOriginalIndicesMap;  // Maps 'local' indices to the original pomdp state indices
+    toOriginalIndicesMap.reserve(numEntries);
+    BeliefValueType x = resolution;
+    for (auto const& entry : belief) {
+        qsRow.push_back(storm::utility::floor(x));                            // v
+        sorted_diffs.emplace(toOriginalIndicesMap.size(), x - qsRow.back());  // x-v
+        toOriginalIndicesMap.push_back(entry.first);
+        x -= entry.second * resolution;
+    }
+    // Insert a dummy 0 column in the qs matrix so the loops below are a bit simpler
+    qsRow.push_back(storm::utility::zero<BeliefValueType>());
+    auto currentSortedDiff = sorted_diffs.begin();
+    auto previousSortedDiff = sorted_diffs.end();
+    --previousSortedDiff;
+    for (uint64_t i = 0; i < numEntries; ++i) {
+        // Compute the weight for the grid points
+        BeliefValueType weight = previousSortedDiff->diff - currentSortedDiff->diff;
+        if (i == 0) {
+            // The first weight is a bit different
+            weight += storm::utility::one<BeliefValueType>();
+        } else {
+            // 'compute' the next row of the qs matrix
+            qsRow[previousSortedDiff->dimension] += storm::utility::one<BeliefValueType>();
+        }
+        if (!storm::utility::isAlmostZero<BeliefValueType>(weight)) {
+            // Compute the grid point
+            std::unordered_map<uint64_t, BeliefValueType> gridPoint;
+            for (uint64_t j = 0; j < numEntries; ++j) {
+                BeliefValueType gridPointEntry = qsRow[j] - qsRow[j + 1];
+                if (!storm::utility::isAlmostZero<BeliefValueType>(weight)) {
+                    gridPoint[toOriginalIndicesMap[j]] = gridPointEntry / resolution;
+                }
+            }
+            bool gridPointFound = false;
+            for (auto const& entry : overApproxBeliefExchange.value().idToBeliefMap) {
+                if (entry.second == gridPoint) {
+                    gridPointFound = true;
+                    if (firstValue) {
+                        result = storm::utility::convertNumber<BeliefMDPType>(weight) *
+                                 overApproxBeliefExchange.value().beliefIdToOverApproxValueMap.at(entry.first);
+                        firstValue = false;
+                    } else {
+                        result += storm::utility::convertNumber<BeliefMDPType>(weight) *
+                                  overApproxBeliefExchange.value().beliefIdToOverApproxValueMap.at(entry.first);
+                    }
+                    continue;
+                }
+            }
+            if (!gridPointFound) {
+                STORM_LOG_DEBUG("Did not find grid point. Skip over-approximation value for belief.\n");
+                return storm::utility::infinity<BeliefMDPType>();
+            }
+        }
+        previousSortedDiff = currentSortedDiff++;
+    }
+    return result;
 }
 
 /* Template Instantiations */
