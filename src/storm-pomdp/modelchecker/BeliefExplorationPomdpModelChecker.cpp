@@ -1726,7 +1726,7 @@ BeliefMDPType BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType
             std::unordered_map<uint64_t, BeliefValueType> gridPoint;
             for (uint64_t j = 0; j < numEntries; ++j) {
                 BeliefValueType gridPointEntry = qsRow[j] - qsRow[j + 1];
-                if (!storm::utility::isAlmostZero<BeliefValueType>(weight)) {
+                if (!storm::utility::isAlmostZero<BeliefValueType>(gridPointEntry)) {
                     gridPoint[toOriginalIndicesMap[j]] = gridPointEntry / resolution;
                 }
             }
