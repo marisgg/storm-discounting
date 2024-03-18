@@ -622,7 +622,12 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         overApproxHeuristicPar.gapThreshold = options.gapThresholdInit;
         overApproxHeuristicPar.observationThreshold = options.obsThresholdInit;
         overApproxHeuristicPar.optimalChoiceValueEpsilon = options.optimalChoiceValueThresholdInit;
-        overApproxHeuristicPar.sizeThreshold = options.sizeThresholdInit;
+
+        if (options.sizeThresholdInit == 0) {
+            overApproxHeuristicPar.sizeThreshold = std::numeric_limits<uint64_t>::max();
+        } else {
+            overApproxHeuristicPar.sizeThreshold = options.sizeThresholdInit;
+        }
 
         buildOverApproximation(env, targetObservations, min, rewardModelName.has_value(), false, overApproxHeuristicPar, observationResolutionVector,
                                overApproxBeliefManager, overApproximation);
