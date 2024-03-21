@@ -238,7 +238,7 @@ template<typename PomdpType, typename BeliefValueType>
 typename BeliefMdpExplorer<PomdpType, BeliefValueType>::BeliefId BeliefMdpExplorer<PomdpType, BeliefValueType>::exploreNextState() {
     STORM_LOG_ASSERT(status == Status::Exploring, "Method call is invalid in current status.");
     // Mark the end of the previously explored row group.
-    if (currentMdpState != noState() && mdpStatesToExplorePrioState.rbegin()->second == exploredChoiceIndices.size()) {
+    if (currentMdpState != noState() && !currentStateHasOldBehavior()) {
         internalAddRowGroupIndex();
     }
 
