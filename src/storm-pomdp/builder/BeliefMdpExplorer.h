@@ -21,7 +21,7 @@ class CheckTask;
 class CheckResult;
 }  // namespace modelchecker
 namespace builder {
-enum class ExplorationHeuristic { BreadthFirst, LowerBoundPrio, UpperBoundPrio, GapPrio, ProbabilityPrio };
+enum class ExplorationHeuristic { BreadthFirst, LowerBoundPrio, UpperBoundPrio, GapPrio, ProbabilityPrio, ExcessUncertainty };
 
 template<typename PomdpType, typename BeliefValueType = typename PomdpType::ValueType>
 class BeliefMdpExplorer {
@@ -267,6 +267,10 @@ class BeliefMdpExplorer {
 
     uint64_t getNrOfFMSchedulers() const;
 
+    uint64_t getHorizonOfState(uint64_t state) const;
+
+    void setDiscountedInformation(ValueType newDiscountFactor, ValueType newPrecision);
+
    private:
     MdpStateType noState() const;
 
@@ -307,6 +311,8 @@ class BeliefMdpExplorer {
     uint64_t nextId;
     ValueType prio;
 
+    std::unordered_map<MdpStateType, uint64_t> stateToHorizon;
+
     // Special states and choices during exploration
     std::optional<MdpStateType> extraTargetState;
     std::optional<MdpStateType> extraBottomState;
@@ -334,6 +340,9 @@ class BeliefMdpExplorer {
     // The current status of this explorer
     ExplorationHeuristic explHeuristic;
     Status status;
+
+    ValueType discountFactor = storm::utility::one<ValueType>();
+    ValueType precision = storm::utility::zero<ValueType>();
 
     struct ExplorationStorage {
         std::vector<BeliefId> storedMdpStateToBeliefIdMap;
