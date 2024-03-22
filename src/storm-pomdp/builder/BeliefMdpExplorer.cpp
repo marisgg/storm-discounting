@@ -330,6 +330,7 @@ bool BeliefMdpExplorer<PomdpType, BeliefValueType>::addTransitionToBelief(uint64
             // We check if the value is higher than the current priority and update if necessary
             typename PomdpType::ValueType newPrio = computeUpperValueBoundAtBelief(getBeliefId(column)) - computeLowerValueBoundAtBelief(getBeliefId(column)) -
                                                     precision / storm::utility::pow(discountFactor, stateToHorizon[column]);
+            newPrio *= value;
             //  Erase the state from the "queue" map and re-insert it with the new value
             auto range = mdpStatesToExplorePrioState.equal_range(mdpStatesToExploreStatePrio[column]);
             for (auto i = range.first; i != range.second; ++i) {
