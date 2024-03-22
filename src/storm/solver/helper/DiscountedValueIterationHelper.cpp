@@ -81,7 +81,7 @@ SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::Disc
     SolverStatus status{SolverStatus::InProgress};
     while (status == SolverStatus::InProgress) {
         ++numIterations;
-        if (viOperator->template applyWithDiscounting(*operand1, *operand2, offsets, backend, discountFactor)) {
+        if (viOperator->template apply(*operand1, *operand2, offsets, backend)) {
             status = SolverStatus::Converged;
         } else if (iterationCallback) {
             status = iterationCallback(status);

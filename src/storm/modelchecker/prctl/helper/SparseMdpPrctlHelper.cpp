@@ -994,10 +994,10 @@ MDPSparseModelCheckingHelperReturnType<SolutionType> SparseMdpPrctlHelper<ValueT
 
     std::vector<SolutionType> x = std::vector<SolutionType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<SolutionType>());
     b = rewardModel.getTotalRewardVector(transitionMatrix);
-    storm::modelchecker::helper::DiscountingHelper<ValueType> discountingHelper(transitionMatrix, produceScheduler);
+    storm::modelchecker::helper::DiscountingHelper<ValueType> discountingHelper(transitionMatrix, discountFactor, produceScheduler);
     discountingHelper.setUpViOperator();
 
-    discountingHelper.solveWithDiscountedValueIteration(env, goal.direction(), x, b, discountFactor);
+    discountingHelper.solveWithDiscountedValueIteration(env, goal.direction(), x, b);
 
     std::unique_ptr<storm::storage::Scheduler<SolutionType>> scheduler;
     if (produceScheduler) {
