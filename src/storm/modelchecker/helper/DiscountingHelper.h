@@ -13,13 +13,13 @@ namespace helper {
 template<typename ValueType, bool TrivialRowGrouping = false>
 class DiscountingHelper : public SingleValueModelCheckerHelper<ValueType, storm::models::ModelRepresentation::Sparse> {
    public:
-    DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A);
-    DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A, bool trackScheduler);
+    DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A, ValueType discountFactor);
+    DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A, ValueType discountFactor, bool trackScheduler);
 
     void setUpViOperator() const;
 
     bool solveWithDiscountedValueIteration(Environment const& env, std::optional<OptimizationDirection> dir, std::vector<ValueType>& x,
-                                           std::vector<ValueType> const& b, ValueType discountFactor) const;
+                                           std::vector<ValueType> const& b) const;
 
     /*!
      * Retrieves the generated scheduler. Note: it is only legal to call this function if a scheduler was generated.
@@ -52,6 +52,10 @@ class DiscountingHelper : public SingleValueModelCheckerHelper<ValueType, storm:
     // A reference to the original sparse matrix given to this solver. If the solver takes posession of the matrix
     // the reference refers to localA.
     storm::storage::SparseMatrix<ValueType> const* A;
+
+    storm::storage::SparseMatrix<ValueType> discountedA;
+
+    ValueType discountFactor;
 
     /// Whether we generate a scheduler during solving.
     bool trackScheduler = false;

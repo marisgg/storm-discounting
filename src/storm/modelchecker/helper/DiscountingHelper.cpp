@@ -10,21 +10,29 @@ namespace modelchecker {
 namespace helper {
 
 template<typename ValueType, bool TrivialRowGrouping>
-DiscountingHelper<ValueType, TrivialRowGrouping>::DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A) : localA(nullptr), A(&A) {
+DiscountingHelper<ValueType, TrivialRowGrouping>::DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A, ValueType discountFactor)
+    : localA(nullptr), A(&A), discountFactor(discountFactor) {
     progressMeasurement = storm::utility::ProgressMeasurement("iterations");
+    storm::storage::SparseMatrix<ValueType> discountedMatrix(A);
+    discountedMatrix.scaleRowsInPlace(std::vector<ValueType>(discountedMatrix.getRowCount(), discountFactor));
+    discountedA = discountedMatrix;
 }
 
 template<typename ValueType, bool TrivialRowGrouping>
-DiscountingHelper<ValueType, TrivialRowGrouping>::DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A, bool trackScheduler)
-    : localA(nullptr), A(&A), trackScheduler(trackScheduler) {
+DiscountingHelper<ValueType, TrivialRowGrouping>::DiscountingHelper(storm::storage::SparseMatrix<ValueType> const& A, ValueType discountFactor,
+                                                                    bool trackScheduler)
+    : localA(nullptr), A(&A), discountFactor(discountFactor), trackScheduler(trackScheduler) {
     progressMeasurement = storm::utility::ProgressMeasurement("iterations");
+    storm::storage::SparseMatrix<ValueType> discountedMatrix(A);
+    discountedMatrix.scaleRowsInPlace(std::vector<ValueType>(discountedMatrix.getRowCount(), discountFactor));
+    discountedA = discountedMatrix;
 }
 
 template<typename ValueType, bool TrivialRowGrouping>
 void DiscountingHelper<ValueType, TrivialRowGrouping>::setUpViOperator() const {
     if (!viOperator) {
         viOperator = std::make_shared<solver::helper::ValueIterationOperator<ValueType, TrivialRowGrouping>>();
-        viOperator->setMatrixBackwards(*this->A);
+        viOperator->setMatrixBackwards(this->discountedA);
     }
     /*if (this->choiceFixedForRowGroup) {
         // Ignore those rows that are not selected
@@ -44,7 +52,7 @@ void DiscountingHelper<ValueType, TrivialRowGrouping>::showProgressIterative(uin
 template<typename ValueType, bool TrivialRowGrouping>
 bool DiscountingHelper<ValueType, TrivialRowGrouping>::solveWithDiscountedValueIteration(storm::Environment const& env,
                                                                                          std::optional<OptimizationDirection> dir, std::vector<ValueType>& x,
-                                                                                         std::vector<ValueType> const& b, ValueType discountFactor) const {
+                                                                                         std::vector<ValueType> const& b) const {
     storm::solver::helper::DiscountedValueIterationHelper<ValueType, TrivialRowGrouping> viHelper(viOperator);
     uint64_t numIterations{0};
     auto viCallback = [&](solver::SolverStatus const& current) {

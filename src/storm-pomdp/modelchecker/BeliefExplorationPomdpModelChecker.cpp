@@ -12,6 +12,7 @@
 
 #include "storm-pomdp/builder/BeliefMdpExplorer.h"
 #include "storm-pomdp/modelchecker/PreprocessingPomdpValueBoundsModelChecker.h"
+#include "storm/environment/solver/MinMaxSolverEnvironment.h"
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/utility/vector.h"
 
@@ -346,6 +347,16 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         if (!overApproximation->hasComputedValues() || storm::utility::resources::isTerminate()) {
             return;
         }
+        overApproxBeliefExchange = BeliefExchange();
+        overApproxBeliefExchange.value().idToBeliefMap = overApproximation->getBeliefIdToBeliefMap(overApproximation->getBeliefsInMdp());
+        for (uint64_t i = 0; i < overApproximation->getExploredMdp()->getNumberOfStates(); ++i) {
+            if (overApproximation->getBeliefId(i) != std::numeric_limits<uint64_t>::max()) {
+                overApproxBeliefExchange.value().beliefIdToOverApproxValueMap[overApproximation->getBeliefId(i)] =
+                    overApproximation->getValuesOfExploredMdp().at(i);
+            }
+        }
+        overApproxBeliefExchange->overApproxResolution = options.resolutionInit;
+
         ValueType const& newValue = overApproximation->getComputedValueAtInitialState();
         bool betterBound = min ? result.updateLowerBound(newValue) : result.updateUpperBound(newValue);
         if (betterBound) {
@@ -374,7 +385,6 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                 underApproxHeuristicPar.sizeThreshold = pomdp().getNumberOfStates() * pomdp().getMaxNrStatesWithSameObservation();
                 STORM_PRINT_AND_LOG("Heuristically selected an under-approximation MDP size threshold of " << underApproxHeuristicPar.sizeThreshold << ".\n")
             }
-            underApproxHeuristicPar.sizeThreshold = pomdp().getNumberOfStates() * pomdp().getMaxNrStatesWithSameObservation();
         }
 
         if (options.useClipping && rewardModelName.has_value()) {
@@ -1115,6 +1125,11 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         statistics.nrClippedStates = 0;
     }
 
+    if (discountFactor.has_value()) {
+        underApproximation->setDiscountedInformation(discountFactor.value(),
+                                                     storm::utility::convertNumber<typename PomdpModelType::ValueType>(env.solver().minMax().getPrecision()));
+    }
+
     uint64_t nrCutoffStrategies = min ? underApproximation->getNrSchedulersForUpperBounds() : underApproximation->getNrSchedulersForLowerBounds();
 
     bool fixPoint = true;
@@ -1159,6 +1174,7 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                                                                 << "Clipped States: " << statistics.nrClippedStates.value() << "\n");
             }
         }
+        // Store the state if we want to pause the unfolding
         if ((unfoldingControl == UnfoldingControl::Pause || unfoldingControl == UnfoldingControl::PauseAndComputeCutoffValues) && !stateStored) {
             underApproximation->storeExplorationState();
             stateStored = true;
@@ -1172,6 +1188,22 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                         auto triangulationValue = triangulateBeliefWithOverApproxValues(entry.second, resolutionInBeliefValueType);
                         if (triangulationValue != storm::utility::infinity<BeliefMDPType>()) {
                             beliefExchange.beliefIdToOverApproxValueMap[entry.first] = triangulationValue;
+                        }
+                    }
+                }
+                for (auto const& entry : beliefExchange.idToBeliefMap) {
+                    BeliefMDPType value;
+                    if (min) {
+                        value = underApproximation->computeLowerValueBoundAtBelief(entry.first);
+                        if ((beliefExchange.beliefIdToOverApproxValueMap.count(entry.first) == 0 && value != -storm::utility::infinity<BeliefMDPType>()) ||
+                            beliefExchange.beliefIdToOverApproxValueMap[entry.first] < value) {
+                            beliefExchange.beliefIdToOverApproxValueMap[entry.first] = value;
+                        }
+                    } else {
+                        value = underApproximation->computeUpperValueBoundAtBelief(entry.first);
+                        if ((beliefExchange.beliefIdToOverApproxValueMap.count(entry.first) == 0 && value != storm::utility::infinity<BeliefMDPType>()) ||
+                            beliefExchange.beliefIdToOverApproxValueMap[entry.first] > value) {
+                            beliefExchange.beliefIdToOverApproxValueMap[entry.first] = value;
                         }
                     }
                 }
@@ -1639,8 +1671,6 @@ std::vector<BeliefValueType> BeliefExplorationPomdpModelChecker<PomdpModelType, 
 template<typename PomdpModelType, typename BeliefValueType, typename BeliefMDPType>
 typename PomdpModelType::ValueType BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::getGap(
     typename PomdpModelType::ValueType const& l, typename PomdpModelType::ValueType const& u) {
-    STORM_LOG_ASSERT(l >= storm::utility::zero<typename PomdpModelType::ValueType>() && u >= storm::utility::zero<typename PomdpModelType::ValueType>(),
-                     "Gap computation currently does not handle negative values.");
     if (storm::utility::isInfinity(u)) {
         if (storm::utility::isInfinity(l)) {
             return storm::utility::zero<typename PomdpModelType::ValueType>();
