@@ -180,9 +180,10 @@ class BeliefMdpExplorer {
 
     std::vector<storm::storage::Scheduler<ValueType>> getLowerValueBoundSchedulers() const;
 
-    void computeValuesOfExploredMdp(storm::Environment const &env, storm::solver::OptimizationDirection const &dir);
+    void computeValuesOfExploredMdp(storm::Environment const &env, storm::solver::OptimizationDirection const &dir, bool recomputeInitialValue = false);
 
-    void computeDiscountedTotalRewardsOfExploredMdp(storm::Environment const &env, storm::solver::OptimizationDirection const &dir, ValueType discountFactor);
+    void computeDiscountedTotalRewardsOfExploredMdp(storm::Environment const &env, storm::solver::OptimizationDirection const &dir, ValueType discountFactor,
+                                                    bool recomputeInitialValue = false);
 
     bool hasComputedValues() const;
 

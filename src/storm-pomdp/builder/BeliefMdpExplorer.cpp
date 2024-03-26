@@ -935,7 +935,8 @@ BeliefMdpExplorer<PomdpType, BeliefValueType>::computeFMSchedulerValueForMemoryN
 }
 
 template<typename PomdpType, typename BeliefValueType>
-void BeliefMdpExplorer<PomdpType, BeliefValueType>::computeValuesOfExploredMdp(storm::Environment const &env, storm::solver::OptimizationDirection const &dir) {
+void BeliefMdpExplorer<PomdpType, BeliefValueType>::computeValuesOfExploredMdp(storm::Environment const &env, storm::solver::OptimizationDirection const &dir,
+                                                                               bool recomputeValueInInitialState) {
     STORM_LOG_ASSERT(status == Status::ModelFinished, "Method call is invalid in current status.");
     STORM_LOG_ASSERT(exploredMdp, "Tried to compute values but the MDP is not explored");
     auto property = createStandardProperty(dir, exploredMdp->hasRewardModel());
@@ -945,6 +946,13 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::computeValuesOfExploredMdp(s
     if (res) {
         values = std::move(res->asExplicitQuantitativeCheckResult<ValueType>().getValueVector());
         scheduler = std::make_shared<storm::storage::Scheduler<ValueType>>(res->asExplicitQuantitativeCheckResult<ValueType>().getScheduler());
+        if (recomputeValueInInitialState) {
+            auto initState = exploredMdp->getInitialStates().getNextSetIndex(0);
+            values[initState] = storm::utility::zero<ValueType>();
+            for (auto const &successor : exploredMdp->getTransitionMatrix().getRow(initState, scheduler->getChoice(initState).getDeterministicChoice())) {
+                values[initState] += successor.getValue() * values[successor.getColumn()];
+            }
+        }
         STORM_LOG_WARN_COND_DEBUG(storm::utility::vector::compareElementWise(lowerValueBounds, values, std::less_equal<ValueType>()),
                                   "Computed values are smaller than the lower bound.");
         STORM_LOG_WARN_COND_DEBUG(storm::utility::vector::compareElementWise(upperValueBounds, values, std::greater_equal<ValueType>()),
@@ -959,7 +967,7 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::computeValuesOfExploredMdp(s
 template<typename PomdpType, typename BeliefValueType>
 void BeliefMdpExplorer<PomdpType, BeliefValueType>::computeDiscountedTotalRewardsOfExploredMdp(storm::Environment const &env,
                                                                                                storm::solver::OptimizationDirection const &dir,
-                                                                                               ValueType discountFactor) {
+                                                                                               ValueType discountFactor, bool recomputeValueInInitialState) {
     STORM_LOG_ASSERT(status == Status::ModelFinished, "Method call is invalid in current status.");
     STORM_LOG_ASSERT(exploredMdp, "Tried to compute values but the MDP is not explored");
     std::string propertyString = "R";
@@ -977,6 +985,13 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::computeDiscountedTotalReward
         values = std::move(res->asExplicitQuantitativeCheckResult<ValueType>().getValueVector());
         if (res->asExplicitQuantitativeCheckResult<ValueType>().hasScheduler()) {
             scheduler = std::make_shared<storm::storage::Scheduler<ValueType>>(res->asExplicitQuantitativeCheckResult<ValueType>().getScheduler());
+            if (recomputeValueInInitialState) {
+                auto initState = exploredMdp->getInitialStates().getNextSetIndex(0);
+                values[initState] = storm::utility::zero<ValueType>();
+                for (auto const &successor : exploredMdp->getTransitionMatrix().getRow(initState, scheduler->getChoice(initState).getDeterministicChoice())) {
+                    values[initState] += successor.getValue() * values[successor.getColumn()];
+                }
+            }
         }
         STORM_LOG_WARN_COND_DEBUG(storm::utility::vector::compareElementWise(lowerValueBounds, values, std::less_equal<ValueType>()),
                                   "Computed values are smaller than the lower bound.");

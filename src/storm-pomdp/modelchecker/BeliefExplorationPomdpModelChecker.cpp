@@ -1416,7 +1416,8 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
     statistics.underApproximationCheckTime.start();
     if (discountFactor.has_value()) {
         underApproximation->computeDiscountedTotalRewardsOfExploredMdp(
-            env, min ? storm::solver::OptimizationDirection::Minimize : storm::solver::OptimizationDirection::Maximize, discountFactor.value());
+            env, min ? storm::solver::OptimizationDirection::Minimize : storm::solver::OptimizationDirection::Maximize, discountFactor.value(),
+            options.recomputeInitialValueWithoutDiscounting);
     } else {
         underApproximation->computeValuesOfExploredMdp(env,
                                                        min ? storm::solver::OptimizationDirection::Minimize : storm::solver::OptimizationDirection::Maximize);
