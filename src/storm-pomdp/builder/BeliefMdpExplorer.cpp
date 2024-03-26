@@ -928,7 +928,10 @@ BeliefMdpExplorer<PomdpType, BeliefValueType>::computeFMSchedulerValueForMemoryN
     STORM_LOG_ASSERT(!fmSchedulerValueList.empty(), "Requested finite memory scheduler value bounds but none were available.");
     STORM_LOG_ASSERT(index < fmSchedulerValueList.size(), "Requested finite memory scheduler value bounds for index " << index << "not available.");
     auto obs = beliefManager->getBeliefObservation(beliefId);
-    STORM_LOG_ASSERT(fmSchedulerValueList.size() > obs, "Requested value bound for observation " << obs << " not available.");
+    if (fmSchedulerValueList.at(index).empty()) {
+        return {false, 0};
+    }
+    STORM_LOG_ASSERT(fmSchedulerValueList.at(index).size() > obs, "Requested value bound for observation " << obs << " not available.");
     STORM_LOG_ASSERT(fmSchedulerValueList.at(index).at(obs).size() > memoryNode,
                      "Requested value bound for observation " << obs << " and memory node " << memoryNode << " not available.");
     return beliefManager->getWeightedSum(beliefId, fmSchedulerValueList.at(index).at(obs).at(memoryNode));
@@ -1384,6 +1387,9 @@ uint64_t BeliefMdpExplorer<PomdpType, BeliefValueType>::addFMSchedValueList(std:
 
 template<typename PomdpType, typename BeliefValueType>
 uint64_t BeliefMdpExplorer<PomdpType, BeliefValueType>::getNrOfMemoryNodesForObservation(uint64_t index, uint32_t observation) const {
+    if (fmSchedulerValueList.at(index).empty()) {
+        return 0;
+    }
     return fmSchedulerValueList.at(index).at(observation).size();
 }
 
