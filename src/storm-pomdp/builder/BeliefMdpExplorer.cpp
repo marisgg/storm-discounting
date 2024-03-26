@@ -928,7 +928,7 @@ BeliefMdpExplorer<PomdpType, BeliefValueType>::computeFMSchedulerValueForMemoryN
     STORM_LOG_ASSERT(!fmSchedulerValueList.empty(), "Requested finite memory scheduler value bounds but none were available.");
     STORM_LOG_ASSERT(index < fmSchedulerValueList.size(), "Requested finite memory scheduler value bounds for index " << index << "not available.");
     auto obs = beliefManager->getBeliefObservation(beliefId);
-    if (fmSchedulerValueList.at(index).empty()) {
+    if (fmSchedulerValueList.at(index).size() == 0) {
         return {false, 0};
     }
     STORM_LOG_ASSERT(fmSchedulerValueList.at(index).size() > obs, "Requested value bound for observation " << obs << " not available.");
