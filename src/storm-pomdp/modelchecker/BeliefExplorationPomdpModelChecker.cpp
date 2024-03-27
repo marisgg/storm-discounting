@@ -683,7 +683,7 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         if (unfoldingStatus != Status::Converged) {
             // Continue unfolding underapproximation
             underApproxFixPoint = buildUnderApproximation(env, targetObservations, min, rewardModelName.has_value(), false, underApproxHeuristicPar,
-                                                          underApproxBeliefManager, interactiveUnderApproximationExplorer, firstIteration);
+                                                          underApproxBeliefManager, interactiveUnderApproximationExplorer, firstIteration, discountFactor);
             if (interactiveUnderApproximationExplorer->hasComputedValues() && !storm::utility::resources::isTerminate()) {
                 ValueType const& newValue = interactiveUnderApproximationExplorer->getComputedValueAtInitialState();
                 bool betterBound = min ? interactiveResult.updateUpperBound(newValue) : interactiveResult.updateLowerBound(newValue);
