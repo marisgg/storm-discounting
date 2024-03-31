@@ -1,6 +1,6 @@
 #pragma once
 
-#include "solver/SolverSelectionOptions.h"
+#include "storm/solver/SolverSelectionOptions.h"
 #include "storm-pomdp/analysis/FormulaInformation.h"
 #include "storm-pomdp/storage/BeliefExplorationBounds.h"
 #include "storm/api/verification.h"
