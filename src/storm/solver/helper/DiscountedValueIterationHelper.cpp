@@ -150,8 +150,8 @@ SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::Disc
 template<typename ValueType, bool TrivialRowGrouping>
 SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::DiscountedVI(
     std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, bool relative, ValueType const& precision, ValueType const& discountFactor,
-    ValueType const& maximalAbsoluteReward, std::optional<storm::OptimizationDirection> const& dir, std::function<SolverStatus(SolverStatus const&)> const& iterationCallback,
-    MultiplicationStyle mult) const {
+    ValueType const& maximalAbsoluteReward, std::optional<storm::OptimizationDirection> const& dir,
+    std::function<SolverStatus(SolverStatus const&)> const& iterationCallback, MultiplicationStyle mult) const {
     uint64_t numIterations = 0;
     return DiscountedVI(operand, offsets, numIterations, relative, precision, discountFactor, maximalAbsoluteReward, dir, iterationCallback, mult);
 }
