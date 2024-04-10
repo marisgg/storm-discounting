@@ -14,6 +14,21 @@ class DiscountedVIOperatorBackend {
           discountFactor{discountFactor},
           bound{(((storm::utility::one<ValueType>() - discountFactor) * precision) / (2 * discountFactor))} {
         // Intentionally left empty
+        auto maxRew = storm::utility::one<ValueType>();
+        /*
+        if(rewardModelName){
+            auto rewardVector = pomdp().getRewardModel(rewardModelName.value()).getTotalActionRewardVector(pomdp().getTransitionMatrix(), std::vector<typename
+        PomdpModelType::ValueType>(pomdp().getNumberOfStates(), storm::utility::one<typename PomdpModelType::ValueType>()));
+            //maxRew = storm::utility::convertNumber<BeliefValueType>(storm::utility::maximum(rewardVector));
+        }
+         */
+        /*
+        auto precisionLog = storm::utility::log(precision);
+        auto discountLog = storm::utility::log(discountFactor);
+        auto maxRewLog = storm::utility::convertNumber<ValueType>(storm::utility::log(maxRew));*/
+        auto upper = storm::utility::log<ValueType>((2 * maxRew) / (precision * (1 - discountFactor)));
+        // auto horizon = storm::utility::ceil<ValueType>((precisionLog - maxRewLog) / -discountLog);
+        maxIterations = storm::utility::convertNumber<uint64_t>(storm::utility::ceil<ValueType>(upper / -storm::utility::log(discountFactor)));
     }
 
     void startNewIteration() {
@@ -30,17 +45,20 @@ class DiscountedVIOperatorBackend {
 
     void applyUpdate(ValueType& currValue, [[maybe_unused]] uint64_t rowGroup) {
         if (isConverged) {
+            /*
             if constexpr (Relative) {
                 isConverged = storm::utility::abs<ValueType>(currValue - *best) <= storm::utility::abs<ValueType>(bound * currValue);
             } else {
                 isConverged = storm::utility::abs<ValueType>(currValue - *best) <= bound;
             }
+             */
+            isConverged = currentIteration >= maxIterations;
         }
         currValue = std::move(*best);
     }
 
-    void endOfIteration() const {
-        // intentionally left empty.
+    void endOfIteration() {
+        ++currentIteration;
     }
 
     bool converged() const {
@@ -53,6 +71,8 @@ class DiscountedVIOperatorBackend {
 
    private:
     storm::utility::Extremum<Dir, ValueType> best;
+    uint64_t currentIteration = 0;
+    uint64_t maxIterations = 0;
     ValueType const precision;
     ValueType const discountFactor;
     ValueType const bound;
@@ -70,7 +90,8 @@ template<typename ValueType, bool TrivialRowGrouping>
 template<storm::OptimizationDirection Dir, bool Relative>
 SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::DiscountedVI(
     std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, uint64_t& numIterations, ValueType const& precision,
-    ValueType const& discountFactor, std::function<SolverStatus(SolverStatus const&)> const& iterationCallback, MultiplicationStyle mult) const {
+    ValueType const& discountFactor, ValueType const& maximalAbsoluteReward, std::function<SolverStatus(SolverStatus const&)> const& iterationCallback,
+    MultiplicationStyle mult) const {
     DiscountedVIOperatorBackend<ValueType, Dir, Relative> backend{precision, discountFactor};
     std::vector<ValueType>* operand1{&operand};
     std::vector<ValueType>* operand2{&operand};
@@ -104,24 +125,24 @@ SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::Disc
 template<typename ValueType, bool TrivialRowGrouping>
 SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::DiscountedVI(
     std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, uint64_t& numIterations, bool relative, ValueType const& precision,
-    ValueType const& discountFactor, std::optional<storm::OptimizationDirection> const& dir,
+    ValueType const& discountFactor, ValueType const& maximalAbsoluteReward, std::optional<storm::OptimizationDirection> const& dir,
     std::function<SolverStatus(SolverStatus const&)> const& iterationCallback, MultiplicationStyle mult) const {
     STORM_LOG_ASSERT(TrivialRowGrouping || dir.has_value(), "no optimization direction given!");
     if (!dir.has_value() || maximize(*dir)) {
         if (relative) {
-            return DiscountedVI<storm::OptimizationDirection::Maximize, true>(operand, offsets, numIterations, precision, discountFactor, iterationCallback,
-                                                                              mult);
+            return DiscountedVI<storm::OptimizationDirection::Maximize, true>(operand, offsets, numIterations, precision, discountFactor, maximalAbsoluteReward,
+                                                                              iterationCallback, mult);
         } else {
-            return DiscountedVI<storm::OptimizationDirection::Maximize, false>(operand, offsets, numIterations, precision, discountFactor, iterationCallback,
-                                                                               mult);
+            return DiscountedVI<storm::OptimizationDirection::Maximize, false>(operand, offsets, numIterations, precision, discountFactor,
+                                                                               maximalAbsoluteReward, iterationCallback, mult);
         }
     } else {
         if (relative) {
-            return DiscountedVI<storm::OptimizationDirection::Minimize, true>(operand, offsets, numIterations, precision, discountFactor, iterationCallback,
-                                                                              mult);
+            return DiscountedVI<storm::OptimizationDirection::Minimize, true>(operand, offsets, numIterations, precision, discountFactor, maximalAbsoluteReward,
+                                                                              iterationCallback, mult);
         } else {
-            return DiscountedVI<storm::OptimizationDirection::Minimize, false>(operand, offsets, numIterations, precision, discountFactor, iterationCallback,
-                                                                               mult);
+            return DiscountedVI<storm::OptimizationDirection::Minimize, false>(operand, offsets, numIterations, precision, discountFactor,
+                                                                               maximalAbsoluteReward, iterationCallback, mult);
         }
     }
 }
@@ -129,10 +150,10 @@ SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::Disc
 template<typename ValueType, bool TrivialRowGrouping>
 SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::DiscountedVI(
     std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, bool relative, ValueType const& precision, ValueType const& discountFactor,
-    std::optional<storm::OptimizationDirection> const& dir, std::function<SolverStatus(SolverStatus const&)> const& iterationCallback,
+    ValueType const& maximalAbsoluteReward, std::optional<storm::OptimizationDirection> const& dir, std::function<SolverStatus(SolverStatus const&)> const& iterationCallback,
     MultiplicationStyle mult) const {
     uint64_t numIterations = 0;
-    return DiscountedVI(operand, offsets, numIterations, relative, precision, discountFactor, dir, iterationCallback, mult);
+    return DiscountedVI(operand, offsets, numIterations, relative, precision, discountFactor, maximalAbsoluteReward, dir, iterationCallback, mult);
 }
 
 template class DiscountedValueIterationHelper<double, true>;

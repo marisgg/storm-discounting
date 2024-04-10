@@ -60,10 +60,16 @@ bool DiscountingHelper<ValueType, TrivialRowGrouping>::solveWithDiscountedValueI
         showProgressIterative(numIterations);
         // return this->updateStatus(current, x, guarantee, numIterations, env.solver().minMax().getMaximalNumberOfIterations());
     };
+    auto maximalAbsoluteReward = storm::utility::zero<ValueType>();
+    for (auto const& entry : b) {
+        if (storm::utility::abs(entry) > maximalAbsoluteReward) {
+            maximalAbsoluteReward = storm::utility::abs(entry);
+        }
+    }
     progressMeasurement->startNewMeasurement(0);
     auto status = viHelper.DiscountedVI(x, b, numIterations, env.solver().minMax().getRelativeTerminationCriterion(),
-                                        storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision()), discountFactor, dir, viCallback,
-                                        env.solver().minMax().getMultiplicationStyle());
+                                        storm::utility::convertNumber<ValueType>(env.solver().minMax().getPrecision()), discountFactor, maximalAbsoluteReward,
+                                        dir, viCallback, env.solver().minMax().getMultiplicationStyle());
 
     // this->reportStatus(status, numIterations);
 

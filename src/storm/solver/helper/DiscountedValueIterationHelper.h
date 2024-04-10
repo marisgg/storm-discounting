@@ -19,16 +19,19 @@ class DiscountedValueIterationHelper {
 
     template<storm::OptimizationDirection Dir, bool Relative>
     SolverStatus DiscountedVI(std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, uint64_t& numIterations, ValueType const& precision,
-                              ValueType const& discountFactor, std::function<SolverStatus(SolverStatus const&)> const& iterationCallback = {},
+                              ValueType const& discountFactor, ValueType const& maximalAbsoluteReward,
+                              std::function<SolverStatus(SolverStatus const&)> const& iterationCallback = {},
                               MultiplicationStyle mult = MultiplicationStyle::GaussSeidel) const;
 
     SolverStatus DiscountedVI(std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, uint64_t& numIterations, bool relative,
-                              ValueType const& precision, ValueType const& discountFactor, std::optional<storm::OptimizationDirection> const& dir = {},
+                              ValueType const& precision, ValueType const& discountFactor, ValueType const& maximalAbsoluteReward,
+                              std::optional<storm::OptimizationDirection> const& dir = {},
                               std::function<SolverStatus(SolverStatus const&)> const& iterationCallback = {},
                               MultiplicationStyle mult = MultiplicationStyle::GaussSeidel) const;
 
     SolverStatus DiscountedVI(std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, bool relative, ValueType const& precision,
-                              ValueType const& discountFactor, std::optional<storm::OptimizationDirection> const& dir = {},
+                              ValueType const& discountFactor, ValueType const& maximalAbsoluteReward,
+                              std::optional<storm::OptimizationDirection> const& dir = {},
                               std::function<SolverStatus(SolverStatus const&)> const& iterationCallback = {},
                               MultiplicationStyle mult = MultiplicationStyle::GaussSeidel) const;
 
