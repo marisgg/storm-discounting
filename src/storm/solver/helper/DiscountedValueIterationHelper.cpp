@@ -9,26 +9,14 @@ namespace storm::solver::helper {
 template<typename ValueType, storm::OptimizationDirection Dir, bool Relative>
 class DiscountedVIOperatorBackend {
    public:
-    DiscountedVIOperatorBackend(ValueType const& precision, ValueType const& discountFactor)
+    DiscountedVIOperatorBackend(ValueType const& precision, ValueType const& discountFactor, ValueType const& maximalAbsoluteReward)
         : precision{precision},
           discountFactor{discountFactor},
           bound{(((storm::utility::one<ValueType>() - discountFactor) * precision) / (2 * discountFactor))} {
         // Intentionally left empty
-        auto maxRew = storm::utility::one<ValueType>();
-        /*
-        if(rewardModelName){
-            auto rewardVector = pomdp().getRewardModel(rewardModelName.value()).getTotalActionRewardVector(pomdp().getTransitionMatrix(), std::vector<typename
-        PomdpModelType::ValueType>(pomdp().getNumberOfStates(), storm::utility::one<typename PomdpModelType::ValueType>()));
-            //maxRew = storm::utility::convertNumber<BeliefValueType>(storm::utility::maximum(rewardVector));
-        }
-         */
-        /*
-        auto precisionLog = storm::utility::log(precision);
-        auto discountLog = storm::utility::log(discountFactor);
-        auto maxRewLog = storm::utility::convertNumber<ValueType>(storm::utility::log(maxRew));*/
-        auto upper = storm::utility::log<ValueType>((2 * maxRew) / (precision * (1 - discountFactor)));
-        // auto horizon = storm::utility::ceil<ValueType>((precisionLog - maxRewLog) / -discountLog);
+        auto upper = storm::utility::log<ValueType>((2 * maximalAbsoluteReward) / (precision * (1 - discountFactor)));
         maxIterations = storm::utility::convertNumber<uint64_t>(storm::utility::ceil<ValueType>(upper / -storm::utility::log(discountFactor)));
+        STORM_PRINT("Max Iterations: " << maxIterations << "\n");
     }
 
     void startNewIteration() {
@@ -45,14 +33,12 @@ class DiscountedVIOperatorBackend {
 
     void applyUpdate(ValueType& currValue, [[maybe_unused]] uint64_t rowGroup) {
         if (isConverged) {
-            /*
             if constexpr (Relative) {
                 isConverged = storm::utility::abs<ValueType>(currValue - *best) <= storm::utility::abs<ValueType>(bound * currValue);
             } else {
                 isConverged = storm::utility::abs<ValueType>(currValue - *best) <= bound;
             }
-             */
-            isConverged = currentIteration >= maxIterations;
+            // isConverged = currentIteration >= maxIterations;
         }
         currValue = std::move(*best);
     }
@@ -92,7 +78,7 @@ SolverStatus DiscountedValueIterationHelper<ValueType, TrivialRowGrouping>::Disc
     std::vector<ValueType>& operand, std::vector<ValueType> const& offsets, uint64_t& numIterations, ValueType const& precision,
     ValueType const& discountFactor, ValueType const& maximalAbsoluteReward, std::function<SolverStatus(SolverStatus const&)> const& iterationCallback,
     MultiplicationStyle mult) const {
-    DiscountedVIOperatorBackend<ValueType, Dir, Relative> backend{precision, discountFactor};
+    DiscountedVIOperatorBackend<ValueType, Dir, Relative> backend{precision, discountFactor, maximalAbsoluteReward};
     std::vector<ValueType>* operand1{&operand};
     std::vector<ValueType>* operand2{&operand};
     if (mult == MultiplicationStyle::Regular) {
