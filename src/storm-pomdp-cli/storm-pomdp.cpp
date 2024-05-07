@@ -20,6 +20,7 @@
 #include "storm-pomdp/analysis/QualitativeAnalysisOnGraphs.h"
 #include "storm-pomdp/analysis/UniqueObservationStates.h"
 #include "storm-pomdp/modelchecker/BeliefExplorationPomdpModelChecker.h"
+#include "storm-pomdp/parser/PomdpSolveParser.h"
 #include "storm-pomdp/transformer/ApplyFiniteSchedulerToPomdp.h"
 #include "storm-pomdp/transformer/BinaryPomdpTransformer.h"
 #include "storm-pomdp/transformer/GlobalPOMDPSelfLoopEliminator.h"
@@ -455,19 +456,60 @@ void processOptionsWithDdLib(storm::cli::SymbolicInput const& symbolicInput, sto
     }
 }
 
-void processOptions() {
-    auto symbolicInput = storm::cli::parseSymbolicInput();
-    storm::cli::ModelProcessingInformation mpi;
-    std::tie(symbolicInput, mpi) = storm::cli::preprocessSymbolicInput(symbolicInput);
-    switch (mpi.ddType) {
+template<storm::dd::DdType DdType>
+void processOptionsForPOMDPsolveWithDdLib(std::string const& filename) {
+    auto const& generalSettings = storm::settings::getModule<storm::settings::modules::GeneralSettings>();
+    if (generalSettings.isExactSet()) {
+        STORM_LOG_THROW(DdType == storm::dd::DdType::Sylvan, storm::exceptions::UnexpectedException,
+                        "Exact arithmetic is only supported with Dd library Sylvan.");
+        auto parserResult = storm::pomdp::parser::PomdpSolveParser<storm::RationalNumber>::parsePomdpSolveFile(filename);
+        STORM_LOG_THROW(parserResult.pomdp, storm::exceptions::UnexpectedException, "Expected POMDP to be returned by parser, but found none.");
+        std::string formulaStr = "Rmax=? [C{" + storm::utility::to_string(parserResult.discountFactor) + "}]";
+        auto formula = storm::api::parseProperties(formulaStr).front().getRawFormula();
+        auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*(parserResult.pomdp), *formula);
+        performAnalysis<storm::RationalNumber, storm::dd::DdType::Sylvan, storm::RationalNumber>(parserResult.pomdp, formulaInfo, *formula);
+    } else {
+        auto parserResult = storm::pomdp::parser::PomdpSolveParser<double>::parsePomdpSolveFile(filename);
+        STORM_LOG_THROW(parserResult.pomdp, storm::exceptions::UnexpectedException, "Expected POMDP to be returned by parser, but found none.");
+        std::string formulaStr = "Rmax=? [C{" + std::to_string(parserResult.discountFactor) + "}]";
+        auto formula = storm::api::parseProperties(formulaStr).front().getRawFormula();
+        auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*(parserResult.pomdp), *formula);
+        performAnalysis<double, DdType, double>(parserResult.pomdp, formulaInfo, *formula);
+    }
+}
+
+void processOptionsForPOMDPsolve(std::string const& filename) {
+    auto const& coreSettings = storm::settings::getModule<storm::settings::modules::CoreSettings>();
+    switch (coreSettings.getDdLibraryType()) {
         case storm::dd::DdType::CUDD:
-            processOptionsWithDdLib<storm::dd::DdType::CUDD>(symbolicInput, mpi);
+            processOptionsForPOMDPsolveWithDdLib<storm::dd::DdType::CUDD>(filename);
             break;
         case storm::dd::DdType::Sylvan:
-            processOptionsWithDdLib<storm::dd::DdType::Sylvan>(symbolicInput, mpi);
+            processOptionsForPOMDPsolveWithDdLib<storm::dd::DdType::Sylvan>(filename);
             break;
         default:
             STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected Dd Type.");
+    }
+}
+
+void processOptions() {
+    auto const& pomdpSettings = storm::settings::getModule<storm::settings::modules::POMDPSettings>();
+    if (pomdpSettings.isPOMDPsolveInputSet()) {
+        processOptionsForPOMDPsolve(pomdpSettings.getPOMDPsolveInputFilename());
+    } else {
+        auto symbolicInput = storm::cli::parseSymbolicInput();
+        storm::cli::ModelProcessingInformation mpi;
+        std::tie(symbolicInput, mpi) = storm::cli::preprocessSymbolicInput(symbolicInput);
+        switch (mpi.ddType) {
+            case storm::dd::DdType::CUDD:
+                processOptionsWithDdLib<storm::dd::DdType::CUDD>(symbolicInput, mpi);
+                break;
+            case storm::dd::DdType::Sylvan:
+                processOptionsWithDdLib<storm::dd::DdType::Sylvan>(symbolicInput, mpi);
+                break;
+            default:
+                STORM_LOG_THROW(false, storm::exceptions::UnexpectedException, "Unexpected Dd Type.");
+        }
     }
 }
 }  // namespace cli
