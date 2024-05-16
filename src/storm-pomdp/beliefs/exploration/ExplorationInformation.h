@@ -12,6 +12,7 @@ struct ExplorationInformation {
     storm::pomdp::beliefs::BeliefCollector<BeliefType> discoveredBeliefs;
     std::unordered_map<BeliefId, BeliefStateType> exploredBeliefs;
     std::unordered_map<BeliefId, BeliefMdpValueType> terminalBeliefValues;
+    std::unordered_set<BeliefId> frontierBeliefs;
     BeliefId initialBeliefId;
     ExplorationQueue queue;
 };

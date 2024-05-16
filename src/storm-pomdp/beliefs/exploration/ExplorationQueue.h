@@ -36,6 +36,11 @@ class ExplorationQueue {
      */
     BeliefId popNext();
 
+    /*!
+     * @return the contents of the queue
+     */
+    std::unordered_set<storm::pomdp::beliefs::BeliefId> getContents() const;
+
    private:
     /// The order in which to process the elements.
     ExplorationQueueOrder order;

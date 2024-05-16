@@ -26,6 +26,10 @@ bool BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::performExplor
     while (info.queue.hasNext()) {
         // Check if we terminate prematurely
         if ((terminationCallback && terminationCallback()) || storm::utility::resources::isTerminate()) {
+            if ((terminationCallback && terminationCallback())) {
+                // Gather frontier beliefs (discovered, but unexplored)
+                info.frontierBeliefs = info.queue.getContents();
+            }
             return false;  // Terminate prematurely
         }
 

@@ -61,4 +61,8 @@ BeliefId ExplorationQueue::popNext() {
         return id;
     }
 }
+
+std::unordered_set<storm::pomdp::beliefs::BeliefId> ExplorationQueue::getContents() const {
+    return contents;
+}
 }  // namespace storm::pomdp::beliefs
