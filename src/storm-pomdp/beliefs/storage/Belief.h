@@ -68,7 +68,12 @@ class Belief {
         auto sum = storm::utility::zero<SummandsType>();
         forEach([&sum, &summands](auto const& state, auto const& val) {
             STORM_LOG_ASSERT(state < summands.size(), "State " << state << " is out of range for the given summands.");
-            sum += summands[state] * val;
+            // If SummandsType is the same as ValueType, we can directly multiply the value, otherwise convert
+            if constexpr (std::is_same_v<SummandsType, ValueType>) {
+                sum += summands[state] * val;
+            } else {
+                sum += summands[state] * storm::utility::convertNumber<SummandsType>(val);
+            }
         });
         return sum;
     };
