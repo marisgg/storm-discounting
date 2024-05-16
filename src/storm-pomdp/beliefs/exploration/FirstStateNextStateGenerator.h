@@ -149,7 +149,7 @@ struct NextStateGeneratorHandle {
             for (auto const& pomdpTransition : pomdp.getTransitionMatrix().getRow(state, localActionIndex)) {
                 if (!storm::utility::isZero(pomdpTransition.getValue())) {
                     auto const obs = pomdp.getObservation(pomdpTransition.getColumn());
-                    auto const val = beliefValue * storm::utility::convertNumber<BeliefValueType>(pomdpTransition.getValue());
+                    BeliefValueType const val = beliefValue * storm::utility::convertNumber<BeliefValueType>(pomdpTransition.getValue());
                     if (auto [insertionIt, inserted] = successorObservations.emplace(obs, val); !inserted) {
                         insertionIt->second += val;
                     }
