@@ -184,17 +184,30 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
         }
         propertyInfo.dir = formulaInfo.getOptimizationDirection();
         propertyInfo.targetObservations = targetObservations;
+        storm::pomdp::beliefs::BeliefBasedModelCheckerOptions revisedOptions;
+        if (options.explorationTimeLimit != 0) {
+            revisedOptions.maxExplorationTime = options.explorationTimeLimit;
+        }
+        revisedOptions.maxExplorationSize = options.sizeThresholdInit;
         storm::pomdp::beliefs::BeliefBasedModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType> checker(pomdp());
         BeliefMDPType resultValue;
         bool isOverApproximation{false};
         bool isUnderApproximation{false};
         if (options.discretize) {
             isOverApproximation = true;
-            resultValue =
-                checker.checkDiscretize(env, propertyInfo, options.resolutionInit, options.dynamicTriangulation, pomdpValueBounds.trivialPomdpValueBounds);
+            if (options.sizeThresholdInit == 0) {
+                revisedOptions.maxExplorationSize.reset();
+            }
+            resultValue = checker.checkDiscretize(env, propertyInfo, revisedOptions, options.resolutionInit, options.dynamicTriangulation,
+                                                  pomdpValueBounds.trivialPomdpValueBounds);
         } else {
-            isOverApproximation = isUnderApproximation = true;  // Explore the entire belief MDP (for now)
-            resultValue = checker.checkUnfold(env, propertyInfo, pomdpValueBounds.trivialPomdpValueBounds);
+            if (options.sizeThresholdInit == 0) {
+                revisedOptions.maxExplorationSize = pomdp().getNumberOfStates() * pomdp().getMaxNrStatesWithSameObservation();
+                STORM_PRINT_AND_LOG("Heuristically selected an under-approximation MDP size threshold of " << revisedOptions.maxExplorationSize.value()
+                                                                                                           << ".\n")
+            }
+            isUnderApproximation = true;
+            resultValue = checker.checkUnfold(env, propertyInfo, revisedOptions, pomdpValueBounds.trivialPomdpValueBounds);
         }
         if (storm::solver::maximize(propertyInfo.dir) ? isOverApproximation : isUnderApproximation) {
             result.updateUpperBound(resultValue);
