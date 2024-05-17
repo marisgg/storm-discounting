@@ -255,7 +255,7 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
 
 template std::shared_ptr<storm::models::sparse::Mdp<double>> buildBeliefMdpWithImplicitCutoffs(
     ExplorationInformation<double, Belief<double>> const& explorationInformation, PropertyInformation const& propertyInformation,
-                                                                            std::function<double(Belief<double> const&)> computeCutOffValue);
+    std::function<double(Belief<double> const&)> computeCutOffValue);
 
 template std::shared_ptr<storm::models::sparse::Mdp<storm::RationalNumber>> buildBeliefMdpWithImplicitCutoffs(
     ExplorationInformation<storm::RationalNumber, Belief<double>> const& explorationInformation, PropertyInformation const& propertyInformation,

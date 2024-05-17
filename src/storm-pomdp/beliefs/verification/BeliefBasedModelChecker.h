@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BeliefBasedModelCheckerOptions.h"
 #include "storm-pomdp/beliefs/verification/PropertyInformation.h"
 #include "storm-pomdp/modelchecker/BeliefExplorationPomdpModelCheckerOptions.h"
 #include "storm-pomdp/storage/BeliefExplorationBounds.h"
@@ -16,10 +17,12 @@ class BeliefBasedModelChecker {
     explicit BeliefBasedModelChecker(PomdpModelType const& pomdp);
 
     BeliefMdpValueType checkUnfold(storm::Environment const& env, PropertyInformation const& propertyInformation,
-                                   storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds = {});
+                                   const storm::pomdp::beliefs::BeliefBasedModelCheckerOptions& options,
+                                   storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds);
 
-    BeliefMdpValueType checkDiscretize(storm::Environment const& env, PropertyInformation const& propertyInformation, uint64_t resolution, bool useDynamic,
-                                       storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds = {});
+    BeliefMdpValueType checkDiscretize(storm::Environment const& env, PropertyInformation const& propertyInformation,
+                                       storm::pomdp::beliefs::BeliefBasedModelCheckerOptions const& options, uint64_t resolution, bool useDynamic,
+                                       storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds);
 
    private:
     PomdpModelType const& inputPomdp;
