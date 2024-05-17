@@ -16,7 +16,7 @@ namespace api {
  * @return the result structure
  */
 template<typename ValueType>
-typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>>::Result underapproximateWithCutoffs(
+typename storm::pomdp::storage::BeliefExplorationResult<ValueType> underapproximateWithCutoffs(
     std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, storm::modelchecker::CheckTask<storm::logic::Formula, ValueType> const& task,
     uint64_t sizeThreshold,
     std::vector<std::vector<std::unordered_map<uint64_t, ValueType>>> additionalPomdpStateValues =
@@ -41,7 +41,7 @@ typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::m
  * @return the result structure
  */
 template<typename ValueType>
-typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>>::Result underapproximateWithoutHeuristicValues(
+typename storm::pomdp::storage::BeliefExplorationResult<ValueType> underapproximateWithoutHeuristicValues(
     std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, storm::modelchecker::CheckTask<storm::logic::Formula, ValueType> const& task,
     uint64_t sizeThreshold, std::vector<std::vector<std::unordered_map<uint64_t, ValueType>>> pomdpStateValues) {
     storm::pomdp::modelchecker::BeliefExplorationPomdpModelCheckerOptions<ValueType> options(false, true);
@@ -102,7 +102,7 @@ void startInteractiveExploration(storm::pomdp::modelchecker::BeliefExplorationPo
  */
 template<typename ValueType>
 std::shared_ptr<storm::models::sparse::Model<ValueType>> extractSchedulerAsMarkovChain(
-    typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>>::Result modelcheckingResult) {
+    storm::pomdp::storage::BeliefExplorationResult<ValueType> modelcheckingResult) {
     return modelcheckingResult.schedulerAsMarkovChain;
 }
 
@@ -114,9 +114,7 @@ std::shared_ptr<storm::models::sparse::Model<ValueType>> extractSchedulerAsMarko
  * @return the desired scheduler
  */
 template<typename ValueType>
-storm::storage::Scheduler<ValueType> getCutoffScheduler(
-    typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>>::Result modelcheckingResult,
-    uint64_t schedId) {
+storm::storage::Scheduler<ValueType> getCutoffScheduler(storm::pomdp::storage::BeliefExplorationResult<ValueType> modelcheckingResult, uint64_t schedId) {
     return modelcheckingResult.cutoffSchedulers.at(schedId);
 }
 
@@ -127,8 +125,7 @@ storm::storage::Scheduler<ValueType> getCutoffScheduler(
  * @return the number of schedulers
  */
 template<typename ValueType>
-uint64_t getNumberOfPreprocessingSchedulers(
-    typename storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<storm::models::sparse::Pomdp<ValueType>>::Result modelcheckingResult) {
+uint64_t getNumberOfPreprocessingSchedulers(storm::pomdp::storage::BeliefExplorationResult<ValueType> modelcheckingResult) {
     return modelcheckingResult.cutoffSchedulers.size();
 }
 }  // namespace api
