@@ -16,13 +16,14 @@ class BeliefBasedModelChecker {
    public:
     explicit BeliefBasedModelChecker(PomdpModelType const& pomdp);
 
-    BeliefMdpValueType checkUnfold(storm::Environment const& env, PropertyInformation const& propertyInformation,
-                                   const storm::pomdp::beliefs::BeliefBasedModelCheckerOptions& options,
-                                   storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds);
+    std::pair<BeliefMdpValueType, bool> checkUnfold(storm::Environment const& env, PropertyInformation const& propertyInformation,
+                                                    storm::pomdp::beliefs::BeliefBasedModelCheckerOptions<BeliefMdpValueType> const& options,
+                                                    storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds);
 
-    BeliefMdpValueType checkDiscretize(storm::Environment const& env, PropertyInformation const& propertyInformation,
-                                       storm::pomdp::beliefs::BeliefBasedModelCheckerOptions const& options, uint64_t resolution, bool useDynamic,
-                                       storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds);
+    std::pair<BeliefMdpValueType, bool> checkDiscretize(storm::Environment const& env, PropertyInformation const& propertyInformation,
+                                                        storm::pomdp::beliefs::BeliefBasedModelCheckerOptions<BeliefMdpValueType> const& options,
+                                                        uint64_t resolution, bool useDynamic,
+                                                        storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds);
 
    private:
     PomdpModelType const& inputPomdp;

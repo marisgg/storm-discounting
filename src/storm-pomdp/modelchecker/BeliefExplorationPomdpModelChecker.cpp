@@ -184,22 +184,29 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
         }
         propertyInfo.dir = formulaInfo.getOptimizationDirection();
         propertyInfo.targetObservations = targetObservations;
-        storm::pomdp::beliefs::BeliefBasedModelCheckerOptions revisedOptions;
+        storm::pomdp::beliefs::BeliefBasedModelCheckerOptions<BeliefMDPType> revisedOptions;
         if (options.explorationTimeLimit != 0) {
             revisedOptions.maxExplorationTime = options.explorationTimeLimit;
         }
         revisedOptions.maxExplorationSize = options.sizeThresholdInit;
+
+        if (options.cutZeroGap) {
+            revisedOptions.maxGapToCut = storm::utility::zero<BeliefMDPType>();
+        }
+        // TODO: add gap cut for other values; this is currently problematic as there is no way to not set a gap value
+
         storm::pomdp::beliefs::BeliefBasedModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType> checker(pomdp());
         BeliefMDPType resultValue;
         bool isOverApproximation{false};
         bool isUnderApproximation{false};
+        bool completedExploration{false};
         if (options.discretize) {
             isOverApproximation = true;
             if (options.sizeThresholdInit == 0) {
                 revisedOptions.maxExplorationSize.reset();
             }
-            resultValue = checker.checkDiscretize(env, propertyInfo, revisedOptions, options.resolutionInit, options.dynamicTriangulation,
-                                                  pomdpValueBounds.trivialPomdpValueBounds);
+            std::tie(resultValue, completedExploration) = checker.checkDiscretize(env, propertyInfo, revisedOptions, options.resolutionInit,
+                                                                                  options.dynamicTriangulation, pomdpValueBounds.trivialPomdpValueBounds);
         } else {
             if (options.sizeThresholdInit == 0) {
                 revisedOptions.maxExplorationSize = pomdp().getNumberOfStates() * pomdp().getMaxNrStatesWithSameObservation();
@@ -207,7 +214,8 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
                                                                                                            << ".\n")
             }
             isUnderApproximation = true;
-            resultValue = checker.checkUnfold(env, propertyInfo, revisedOptions, pomdpValueBounds.trivialPomdpValueBounds);
+            std::tie(resultValue, completedExploration) = checker.checkUnfold(env, propertyInfo, revisedOptions, pomdpValueBounds.trivialPomdpValueBounds);
+            isOverApproximation = completedExploration;
         }
         if (storm::solver::maximize(propertyInfo.dir) ? isOverApproximation : isUnderApproximation) {
             result.updateUpperBound(resultValue);

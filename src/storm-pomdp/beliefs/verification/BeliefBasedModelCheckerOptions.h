@@ -3,13 +3,15 @@
 namespace storm::pomdp::beliefs {
 enum explorationTerminationCriterion { MAX_EXPLORATION_SIZE, MAX_EXPLORATION_TIME, MAX_EXPLORATION_SIZE_AND_TIME, NONE };
 
+template<typename ValueType>
 struct BeliefBasedModelCheckerOptions {
     bool implicitCutOffs = false;
 
     // Termination criteria
     std::optional<uint64_t> maxExplorationSize = std::nullopt;
     std::optional<uint64_t> maxExplorationTime = std::nullopt;
-    std::optional<uint64_t> maxiExplorationDepth = std::nullopt;  // currently unused
+    std::optional<uint64_t> maxExplorationDepth = std::nullopt;  // currently unused
+    std::optional<ValueType> maxGapToCut = std::nullopt;
 
     /**
      * Get the termination criterion for the exploration
