@@ -155,8 +155,7 @@ std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> Preproce
 template<typename ValueType>
 [[maybe_unused]] std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>>
 PreprocessingPomdpValueBoundsModelChecker<ValueType>::computeValuesForRandomMemorylessPolicy(
-    storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info,
-    std::shared_ptr<storm::models::sparse::Mdp<ValueType>> underlyingMdp) {
+    storm::Environment const& env, storm::logic::Formula const& formula, std::shared_ptr<storm::models::sparse::Mdp<ValueType>> underlyingMdp) {
     storm::storage::Scheduler<ValueType> pomdpScheduler(pomdp.getNumberOfStates());
     std::vector<uint64_t> obsChoiceVector(pomdp.getNrObservations());
 

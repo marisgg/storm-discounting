@@ -53,8 +53,7 @@ class PreprocessingPomdpValueBoundsModelChecker {
         storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info, uint64_t memoryBound);
 
     [[maybe_unused]] std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> computeValuesForRandomMemorylessPolicy(
-        storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info,
-        std::shared_ptr<storm::models::sparse::Mdp<ValueType>> underlyingMdp);
+        storm::Environment const& env, storm::logic::Formula const& formula, std::shared_ptr<storm::models::sparse::Mdp<ValueType>> underlyingMdp);
 };
 }  // namespace modelchecker
 }  // namespace pomdp
