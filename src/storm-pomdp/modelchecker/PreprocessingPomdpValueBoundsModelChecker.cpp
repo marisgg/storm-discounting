@@ -18,7 +18,8 @@ namespace pomdp {
 namespace modelchecker {
 template<typename ValueType>
 PreprocessingPomdpValueBoundsModelChecker<ValueType>::PreprocessingPomdpValueBoundsModelChecker(storm::models::sparse::Pomdp<ValueType> const& pomdp)
-    : pomdp(pomdp) { /* Intentionally left empty */ }
+    : pomdp(pomdp) { /* Intentionally left empty */
+}
 
 template<typename ValueType>
 typename PreprocessingPomdpValueBoundsModelChecker<ValueType>::ValueBounds PreprocessingPomdpValueBoundsModelChecker<ValueType>::getValueBounds(

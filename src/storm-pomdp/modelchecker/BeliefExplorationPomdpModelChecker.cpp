@@ -809,7 +809,8 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         // While we tell the procedure to be paused, idle
         while (unfoldingControl ==
                    storm::pomdp::modelchecker::BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefMDPType>::UnfoldingControl::Pause &&
-               !storm::utility::resources::isTerminate());
+               !storm::utility::resources::isTerminate())
+            ;
     }
     STORM_LOG_INFO("\tInteractive Unfolding terminated.\n");
 }
@@ -1232,7 +1233,8 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
                     }
                 }
                 setUnfoldingToWait();
-                while (unfoldingControl == UnfoldingControl::WaitForCutoffValues);
+                while (unfoldingControl == UnfoldingControl::WaitForCutoffValues)
+                    ;
                 pauseUnfolding();
             }
         }

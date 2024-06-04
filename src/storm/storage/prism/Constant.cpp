@@ -46,7 +46,8 @@ Constant Constant::substitute(std::map<storm::expressions::Variable, storm::expr
 std::ostream& operator<<(std::ostream& stream, Constant const& constant) {
     stream << "const ";
     if (constant.getType().isRationalType()) {
-        stream << "double" << " ";
+        stream << "double"
+               << " ";
     } else {
         stream << constant.getType() << " ";
     }

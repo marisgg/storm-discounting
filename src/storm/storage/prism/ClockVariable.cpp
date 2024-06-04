@@ -17,7 +17,8 @@ void ClockVariable::createMissingInitialValue() {
 }
 
 std::ostream& operator<<(std::ostream& stream, ClockVariable const& variable) {
-    stream << variable.getName() << ": clock" << ";";
+    stream << variable.getName() << ": clock"
+           << ";";
     return stream;
 }
 

@@ -23,7 +23,9 @@ std::set<std::string> const& HidingComposition::getActionsToHide() const {
 }
 
 void HidingComposition::writeToStream(std::ostream& stream) const {
-    stream << "(" << *sub << ")" << " " << "{" << boost::join(actionsToHide, ", ") << "}";
+    stream << "(" << *sub << ")"
+           << " "
+           << "{" << boost::join(actionsToHide, ", ") << "}";
 }
 
 }  // namespace prism
