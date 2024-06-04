@@ -29,7 +29,7 @@ class ClippingBeliefAbstraction {
     };
 
     ClippingBeliefAbstraction(std::vector<uint64_t>&& observationResolutions);
-    
+
     template<typename AbstractCallback>
     void abstract(BeliefValueType&& probabilityFactor, BeliefType&& belief, AbstractCallback const& callback) {
         BeliefClipping clipping = clipBeliefToGrid(belief, observationResolutions[belief.observation()]);
