@@ -193,9 +193,9 @@ boost::any RewardAccumulationEliminationVisitor::visit(DiscountedTotalRewardForm
     STORM_LOG_THROW(!data.empty(), storm::exceptions::UnexpectedException, "Formula " << f << " does not seem to be a subformula of a reward operator.");
     auto rewName = boost::any_cast<boost::optional<std::string>>(data);
     if (!f.hasRewardAccumulation() || canEliminate(f.getRewardAccumulation(), rewName)) {
-        return std::static_pointer_cast<Formula>(std::make_shared<DiscountedTotalRewardFormula>(f.getDiscountFactor()));
+        return std::static_pointer_cast<Formula>(std::make_shared<DiscountedTotalRewardFormula>(f.getDiscountFactorPtr()));
     } else {
-        return std::static_pointer_cast<Formula>(std::make_shared<DiscountedTotalRewardFormula>(f.getDiscountFactor(), f.getRewardAccumulation()));
+        return std::static_pointer_cast<Formula>(std::make_shared<DiscountedTotalRewardFormula>(f.getDiscountFactorPtr(), f.getRewardAccumulation()));
     }
 }
 }  // namespace logic

@@ -9,7 +9,8 @@ namespace storm {
 namespace logic {
 class DiscountedTotalRewardFormula : public PathFormula {
    public:
-    DiscountedTotalRewardFormula(storm::expressions::Expression const discountFactor, boost::optional<RewardAccumulation> rewardAccumulation = boost::none);
+    DiscountedTotalRewardFormula(std::shared_ptr<storm::expressions::Expression> const discountFactor,
+                                 boost::optional<RewardAccumulation> rewardAccumulation = boost::none);
 
     virtual ~DiscountedTotalRewardFormula() {
         // Intentionally left empty.
@@ -29,13 +30,15 @@ class DiscountedTotalRewardFormula : public PathFormula {
 
     storm::expressions::Expression const& getDiscountFactor() const;
 
+    std::shared_ptr<storm::expressions::Expression> const& getDiscountFactorPtr() const;
+
     template<typename ValueType>
     ValueType getDiscountFactor() const;
 
    private:
     static void checkNoVariablesInDiscountFactor(storm::expressions::Expression const& factor);
 
-    storm::expressions::Expression const discountFactor;
+    std::shared_ptr<storm::expressions::Expression> const discountFactor;
     boost::optional<RewardAccumulation> rewardAccumulation;
 };
 }  // namespace logic

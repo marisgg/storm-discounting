@@ -7,12 +7,13 @@
 
 #include "storm/exceptions/InvalidOperationException.h"
 #include "storm/logic/FormulaVisitor.h"
+#include "storm/storage/expressions/Expression.h"
 
 #include "storm/utility/macros.h"
 
 namespace storm {
 namespace logic {
-DiscountedTotalRewardFormula::DiscountedTotalRewardFormula(storm::expressions::Expression const discountFactor,
+DiscountedTotalRewardFormula::DiscountedTotalRewardFormula(std::shared_ptr<storm::expressions::Expression> const discountFactor,
                                                            boost::optional<RewardAccumulation> rewardAccumulation)
     : discountFactor(discountFactor), rewardAccumulation(rewardAccumulation) {
     // Intentionally left empty.
@@ -49,28 +50,32 @@ boost::any DiscountedTotalRewardFormula::accept(FormulaVisitor const& visitor, b
 std::ostream& DiscountedTotalRewardFormula::writeToStream(std::ostream& out, bool /* allowParentheses */) const {
     // No parentheses necessary
     out << "C";
-    out << "{" << discountFactor.toString() << "}";
+    out << "{" << discountFactor->toString() << "}";
     if (hasRewardAccumulation()) {
         out << "[" << getRewardAccumulation() << "]";
     }
     return out;
 }
 
-storm::expressions::Expression const& DiscountedTotalRewardFormula::getDiscountFactor() const {
+std::shared_ptr<storm::expressions::Expression> const& DiscountedTotalRewardFormula::getDiscountFactorPtr() const {
     return discountFactor;
+}
+
+storm::expressions::Expression const& DiscountedTotalRewardFormula::getDiscountFactor() const {
+    return *discountFactor;
 }
 
 template<>
 double DiscountedTotalRewardFormula::getDiscountFactor() const {
-    checkNoVariablesInDiscountFactor(discountFactor);
-    double value = discountFactor.evaluateAsDouble();
+    checkNoVariablesInDiscountFactor(*discountFactor);
+    double value = discountFactor->evaluateAsDouble();
     return value;
 }
 
 template<>
 storm::RationalNumber DiscountedTotalRewardFormula::getDiscountFactor() const {
-    checkNoVariablesInDiscountFactor(discountFactor);
-    storm::RationalNumber value = discountFactor.evaluateAsRational();
+    checkNoVariablesInDiscountFactor(*discountFactor);
+    storm::RationalNumber value = discountFactor->evaluateAsRational();
     return value;
 }
 

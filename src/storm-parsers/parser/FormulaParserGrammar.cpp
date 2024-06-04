@@ -442,7 +442,8 @@ std::shared_ptr<storm::logic::Formula const> FormulaParserGrammar::createTotalRe
 
 std::shared_ptr<storm::logic::Formula const> FormulaParserGrammar::createDiscountedTotalRewardFormula(
     storm::expressions::Expression const& discountFactor) const {
-    return std::shared_ptr<storm::logic::Formula const>(new storm::logic::DiscountedTotalRewardFormula(discountFactor));
+    return std::shared_ptr<storm::logic::Formula const>(
+        new storm::logic::DiscountedTotalRewardFormula(std::make_shared<storm::expressions::Expression>(discountFactor)));
 }
 
 std::shared_ptr<storm::logic::Formula const> FormulaParserGrammar::createLongRunAverageRewardFormula() const {

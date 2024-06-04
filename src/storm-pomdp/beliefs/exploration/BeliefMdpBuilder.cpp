@@ -2,6 +2,7 @@
 
 #include "storm-pomdp/beliefs/storage/Belief.h"
 
+#include "storm/adapters/RationalNumberAdapter.h"
 #include "storm/models/sparse/Mdp.h"
 #include "storm/models/sparse/StandardRewardModel.h"
 #include "storm/storage/SparseMatrix.h"

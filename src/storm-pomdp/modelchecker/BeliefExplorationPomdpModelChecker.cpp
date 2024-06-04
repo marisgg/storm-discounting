@@ -211,7 +211,7 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
             if (options.sizeThresholdInit == 0) {
                 revisedOptions.maxExplorationSize = pomdp().getNumberOfStates() * pomdp().getMaxNrStatesWithSameObservation();
                 STORM_PRINT_AND_LOG("Heuristically selected an under-approximation MDP size threshold of " << revisedOptions.maxExplorationSize.value()
-                                                                                                           << ".\n")
+                                                                                                           << ".\n");
             }
             isUnderApproximation = true;
             std::tie(resultValue, completedExploration) = checker.checkUnfold(env, propertyInfo, revisedOptions, pomdpValueBounds.trivialPomdpValueBounds);
