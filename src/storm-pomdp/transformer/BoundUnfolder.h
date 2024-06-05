@@ -23,6 +23,13 @@ class BoundUnfolder {
     };
 
     BoundUnfolder() = default;
+
+    /*!
+     * Unfolds a pomdp w.r.t. a reward-bounded until formula
+     * @param originalPomdp The pomdp to unfold
+     * @param formula The formula for which we unfold
+     * @return Result struct containing the new pomdp, the new formula and mappings between (state, epoch) pairs and states in the new pomdp
+     */
     UnfoldingResult unfold(
         std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, const storm::logic::Formula& formula);
 
