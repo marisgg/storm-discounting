@@ -3,15 +3,16 @@
 //
 
 #include "BoundUnfolder.h"
+#include <logic/BoundToUnboundVisitor.h>
 #include <queue>
 #include "api/properties.h"
 #include "logic/UntilFormula.h"
 #include "storage/jani/Property.h"
 #include "storm-parsers/api/properties.h"
 #include "storm-pomdp/analysis/FormulaInformation.h"
+#include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/logic/BoundedUntilFormula.h"
-#include "storm/adapters/RationalFunctionAdapter.h"
 
 namespace storm {
 namespace transformer {
@@ -207,10 +208,9 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
         unfoldedPomdp.setIsCanonic();
     }
 
-    // Generate new UntilFormula
-    std::string propertyString = "Pmax=? [F\"goal\"]";
-    std::vector<storm::jani::Property> propertyVector = storm::api::parseProperties(propertyString);
-    storm::logic::ProbabilityOperatorFormula newFormula = storm::api::extractFormulasFromProperties(propertyVector).front()->asProbabilityOperatorFormula();
+    // Drop Bounds from Until Formula
+    auto vis = storm::logic::BoundToUnboundVisitor();
+    auto newFormula = vis.dropBounds(formula);
 
     /*std::cout << "\nUNFOLDED POMDP:\n";
     pomdp->writeDotToStream(std::cout);

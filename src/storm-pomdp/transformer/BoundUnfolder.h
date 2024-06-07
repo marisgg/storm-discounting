@@ -15,10 +15,10 @@ class BoundUnfolder {
    public:
     struct UnfoldingResult {
         std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp;
-        storm::logic::ProbabilityOperatorFormula formula;
+        std::shared_ptr<storm::logic::Formula> formula;
         std::map<std::pair<uint_fast64_t, ValueType>, uint_fast64_t> stateEpochToNewState;
         std::map<uint_fast64_t, std::pair<uint_fast64_t, ValueType>> newStateToStateEpoch;
-        UnfoldingResult(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, storm::logic::ProbabilityOperatorFormula formula, std::map<std::pair<uint_fast64_t, ValueType>, uint_fast64_t> stateEpochToNewState, std::map<uint_fast64_t, std::pair<uint_fast64_t, ValueType>> newStateToStateEpoch)
+        UnfoldingResult(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, std::shared_ptr<storm::logic::Formula> formula, std::map<std::pair<uint_fast64_t, ValueType>, uint_fast64_t> stateEpochToNewState, std::map<uint_fast64_t, std::pair<uint_fast64_t, ValueType>> newStateToStateEpoch)
             : pomdp(pomdp), formula(formula), stateEpochToNewState(stateEpochToNewState), newStateToStateEpoch(newStateToStateEpoch){}
     };
 
