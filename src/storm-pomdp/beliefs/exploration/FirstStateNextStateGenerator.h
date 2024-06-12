@@ -116,7 +116,7 @@ struct NextStateGeneratorHandle {
 
     template<typename... CallBackArgs>
     void operator()(BeliefType const& belief, uint64_t localActionIndex, CallBackArgs const&... additionalCallbackArgs) {
-        applyPreAbstraction(belief, localActionIndex, std::forward<CallBackArgs>(additionalCallbackArgs)...);
+        applyPreAbstraction(belief, localActionIndex, std::forward<CallBackArgs const>(additionalCallbackArgs)...);
     }
 
     PomdpType const& pomdp;
@@ -134,8 +134,8 @@ struct NextStateGeneratorHandle {
                                     [this, &localActionIndex, &additionalCallbackArgs...](BeliefType&& preBel, BeliefValueType&& preVal,
                                                                                           auto const&... additionalPreAbstractionArgs) {
                                         computeSuccessorBeliefs(preBel, localActionIndex, std::move(preVal),
-                                                                std::forward<CallBackArgs>(additionalCallbackArgs)...,
-                                                                std::forward<decltype(additionalCallbackArgs)>(additionalPreAbstractionArgs)...);
+                                                                std::forward<CallBackArgs const>(additionalCallbackArgs)...,
+                                                                std::forward<decltype(additionalPreAbstractionArgs)>(additionalPreAbstractionArgs)...);
                                     });
         }
     }
@@ -184,7 +184,7 @@ struct NextStateGeneratorHandle {
                 }
             });
             applyPostAbstraction(builder.build(), static_cast<BeliefValueType>(successorObsValue.second * transitionProbability),
-                                 std::forward<CallBackArgs>(additionalCallbackArgs)...);
+                                 std::forward<CallBackArgs const>(additionalCallbackArgs)...);
         }
     }
 
@@ -196,7 +196,7 @@ struct NextStateGeneratorHandle {
             postAbstraction.abstract(
                 std::move(belief), std::move(transitionProbability),
                 [this, &additionalCallbackArgs...](BeliefType&& postBel, BeliefValueType&& postVal, auto&&... additionalPostAbstractionArgs) {
-                    discoverCallback(std::move(postBel), std::move(postVal), std::forward<CallBackArgs>(additionalCallbackArgs)...,
+                    discoverCallback(std::move(postBel), std::move(postVal), std::forward<CallBackArgs const>(additionalCallbackArgs)...,
                                      std::forward<decltype(additionalPostAbstractionArgs)>(additionalPostAbstractionArgs)...);
                 });
         }

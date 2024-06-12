@@ -113,9 +113,18 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
     // Extract the relevant information from the formula
     auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(pomdp(), formula);
 
-    precomputeValueBounds(formula, preProcEnv);
-    if (!additionalUnderApproximationBounds.empty()) {
-        pomdpValueBounds.fmSchedulerValueList = additionalUnderApproximationBounds;
+    if (!formulaInfo.isBounded()) {
+        precomputeValueBounds(formula, preProcEnv);
+        if (!additionalUnderApproximationBounds.empty()) {
+            pomdpValueBounds.fmSchedulerValueList = additionalUnderApproximationBounds;
+        }
+    } else {
+        // TODO make smarter pre-computed value bounds
+        storm::pomdp::storage::PreprocessingPomdpValueBounds<ValueType> zeroOneValueBound;
+        zeroOneValueBound.lower.push_back(std::vector<ValueType>(pomdp().getNumberOfStates(), storm::utility::zero<ValueType>()));
+        zeroOneValueBound.upper.push_back(std::vector<ValueType>(pomdp().getNumberOfStates(), storm::utility::one<ValueType>()));
+
+        pomdpValueBounds.trivialPomdpValueBounds = zeroOneValueBound;
     }
     uint64_t initialPomdpState = pomdp().getInitialStates().getNextSetIndex(0);
     storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> result(pomdpValueBounds.trivialPomdpValueBounds.getHighestLowerBound(initialPomdpState),
@@ -179,6 +188,17 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
         if (rewardModelName) {
             propertyInfo.kind = storm::pomdp::beliefs::PropertyInformation::Kind::ExpectedTotalReachabilityReward;
             propertyInfo.rewardModelName = rewardModelName;
+        } else if (formulaInfo.isBounded()) {
+            propertyInfo.kind = storm::pomdp::beliefs::PropertyInformation::Kind::RewardBoundedReachabilityProbability;
+            // Collect reward bounds from bounded formula
+            auto boundedFormula = formula.asProbabilityOperatorFormula().getSubformula().asBoundedUntilFormula();
+            for (uint64_t i = 0; i < boundedFormula.getDimension(); ++i) {
+                const auto& tbRef = boundedFormula.getTimeBoundReference(i);
+                if (tbRef.isRewardBound()) {
+                    propertyInfo.rewardBounds.push_back(
+                        {tbRef.getRewardName(), boundedFormula.getLowerBoundAsOptionalTimeBound(i), boundedFormula.getUpperBoundAsOptionalTimeBound(i)});
+                }
+            }
         } else {
             propertyInfo.kind = storm::pomdp::beliefs::PropertyInformation::Kind::ReachabilityProbability;
         }
@@ -205,8 +225,19 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
             if (options.sizeThresholdInit == 0) {
                 revisedOptions.maxExplorationSize.reset();
             }
-            std::tie(resultValue, completedExploration) = checker.checkDiscretize(env, propertyInfo, revisedOptions, options.resolutionInit,
-                                                                                  options.dynamicTriangulation, pomdpValueBounds.trivialPomdpValueBounds);
+
+            if (propertyInfo.kind == beliefs::PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
+                std::vector<std::string> relevantRewardModelNames(propertyInfo.rewardBounds.size());
+                for (auto const& rewardBound : propertyInfo.rewardBounds) {
+                    relevantRewardModelNames.push_back(rewardBound.rewardModelName);
+                }
+                std::tie(resultValue, completedExploration) =
+                    checker.checkRewardAwareDiscretize(env, propertyInfo, revisedOptions, options.resolutionInit, options.dynamicTriangulation,
+                                                       pomdpValueBounds.trivialPomdpValueBounds, relevantRewardModelNames);
+            } else {
+                std::tie(resultValue, completedExploration) = checker.checkDiscretize(env, propertyInfo, revisedOptions, options.resolutionInit,
+                                                                                      options.dynamicTriangulation, pomdpValueBounds.trivialPomdpValueBounds);
+            }
         } else {
             if (options.sizeThresholdInit == 0) {
                 revisedOptions.maxExplorationSize = pomdp().getNumberOfStates() * pomdp().getMaxNrStatesWithSameObservation();
@@ -214,7 +245,16 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
                                                                                                            << ".\n");
             }
             isUnderApproximation = true;
-            std::tie(resultValue, completedExploration) = checker.checkUnfold(env, propertyInfo, revisedOptions, pomdpValueBounds.trivialPomdpValueBounds);
+            if (propertyInfo.kind == beliefs::PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
+                std::vector<std::string> relevantRewardModelNames(propertyInfo.rewardBounds.size());
+                for (auto const& rewardBound : propertyInfo.rewardBounds) {
+                    relevantRewardModelNames.push_back(rewardBound.rewardModelName);
+                }
+                std::tie(resultValue, completedExploration) =
+                    checker.checkRewardAwareUnfold(env, propertyInfo, revisedOptions, pomdpValueBounds.trivialPomdpValueBounds, relevantRewardModelNames);
+            } else {
+                std::tie(resultValue, completedExploration) = checker.checkUnfold(env, propertyInfo, revisedOptions, pomdpValueBounds.trivialPomdpValueBounds);
+            }
             isOverApproximation = completedExploration;
         }
         if (storm::solver::maximize(propertyInfo.dir) ? isOverApproximation : isUnderApproximation) {

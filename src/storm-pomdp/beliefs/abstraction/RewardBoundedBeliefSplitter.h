@@ -31,9 +31,9 @@ class RewardBoundedBeliefSplitter {
     template<typename ExpandCallback>
     void abstract(BeliefType const& belief, uint64_t localActionIndex, ExpandCallback const& callback) {
         // gather the occurring reward vectors and build the sub-beliefs
-        std::unordered_map<RewardVectorType, BeliefBuilder<BeliefType>> splitBeliefs;
+        std::map<RewardVectorType, BeliefBuilder<BeliefType>> splitBeliefs;
         belief.forEach([&localActionIndex, &splitBeliefs, this](BeliefStateType const& state, BeliefValueType const& beliefValue) {
-            auto const globalActionIndex = pomdp.getTransitionMatrix().getRowGroupindices()[state] + localActionIndex;
+            auto const globalActionIndex = pomdp.getTransitionMatrix().getRowGroupIndices()[state] + localActionIndex;
             auto const& rewVector = actionRewardVectors[globalActionIndex];
             splitBeliefs[rewVector].addValue(state, beliefValue);
         });

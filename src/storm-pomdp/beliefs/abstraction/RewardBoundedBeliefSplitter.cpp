@@ -51,6 +51,12 @@ std::size_t RewardBoundedBeliefSplitter<RewardValueType, PomdpType, BeliefType>:
 }
 
 template class RewardBoundedBeliefSplitter<double, storm::models::sparse::Pomdp<double>, Belief<double>>;
+template class RewardBoundedBeliefSplitter<double, storm::models::sparse::Pomdp<double>, Belief<storm::RationalNumber>>;
+template class RewardBoundedBeliefSplitter<double, storm::models::sparse::Pomdp<storm::RationalNumber>, Belief<double>>;
+template class RewardBoundedBeliefSplitter<double, storm::models::sparse::Pomdp<storm::RationalNumber>, Belief<storm::RationalNumber>>;
+template class RewardBoundedBeliefSplitter<storm::RationalNumber, storm::models::sparse::Pomdp<double>, Belief<double>>;
+template class RewardBoundedBeliefSplitter<storm::RationalNumber, storm::models::sparse::Pomdp<double>, Belief<storm::RationalNumber>>;
+template class RewardBoundedBeliefSplitter<storm::RationalNumber, storm::models::sparse::Pomdp<storm::RationalNumber>, Belief<double>>;
 template class RewardBoundedBeliefSplitter<storm::RationalNumber, storm::models::sparse::Pomdp<storm::RationalNumber>, Belief<storm::RationalNumber>>;
 
 }  // namespace storm::pomdp::beliefs

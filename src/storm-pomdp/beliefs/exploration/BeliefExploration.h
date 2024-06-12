@@ -18,6 +18,9 @@ template<typename BeliefType>
 class FreudenthalTriangulationBeliefAbstraction;
 
 template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
+class RewardBoundedBeliefSplitter;
+
+template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
 class BeliefExploration {
    public:
     using TerminationCallback = std::function<bool()>;
@@ -25,11 +28,23 @@ class BeliefExploration {
 
     BeliefExploration(PomdpType const& pomdp);
 
-    using StandardExplorationInformation = ExplorationInformation<BeliefMdpValueType, BeliefType>;
-    StandardExplorationInformation initializeStandardExploration(ExplorationQueueOrder const explorationQueueOrder = ExplorationQueueOrder::Unordered);
-    void resumeExploration(StandardExplorationInformation& info, TerminalBeliefCallback const& terminalBeliefCallback = {},
+    template<typename InfoType>
+    InfoType initializeExploration(ExplorationQueueOrder const explorationQueueOrder = ExplorationQueueOrder::Unordered) {
+        InfoType info;
+        info.queue.changeOrder(explorationQueueOrder);
+        info.initialBeliefId = info.discoveredBeliefs.addBelief(firstStateNextStateGenerator.computeInitialBelief());
+        info.queue.push(info.initialBeliefId);
+        return info;
+    }
+
+    void resumeExploration(StandardExplorationInformation<BeliefMdpValueType, BeliefType>& info, TerminalBeliefCallback const& terminalBeliefCallback = {},
                            TerminationCallback const& terminationCallback = {}, storm::OptionalRef<std::string const> rewardModelName = {},
                            storm::OptionalRef<FreudenthalTriangulationBeliefAbstraction<BeliefType>> abstraction = {});
+
+    void resumeRewardAwareExploration(RewardAwareExplorationInformation<BeliefMdpValueType, BeliefType>& info,
+                                      TerminalBeliefCallback const& terminalBeliefCallback, TerminationCallback const& terminationCallback,
+                                      RewardBoundedBeliefSplitter<BeliefMdpValueType, PomdpType, BeliefType> rewardSplitter,
+                                      storm::OptionalRef<FreudenthalTriangulationBeliefAbstraction<BeliefType>> abstraction);
 
    private:
     template<typename InfoType, typename NextStateHandleType>

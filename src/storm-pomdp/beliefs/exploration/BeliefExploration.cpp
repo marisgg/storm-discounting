@@ -40,7 +40,7 @@ bool BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::performExplor
         STORM_LOG_ASSERT(info.terminalBeliefValues.count(currentBeliefId) == 0, "Belief #" << currentBeliefId << " already found to be terminal.");
         // do not take the current belief as reference since it will be invalidated when collecting more beliefs
         auto const currentBelief = info.discoveredBeliefs.getBeliefFromId(currentBeliefId);
-
+        STORM_LOG_TRACE("Explore belief " << currentBeliefId << " : " << currentBelief.toString());
         // Check if the current belief is terminal
         if (terminalBeliefCallback) {
             if (auto terminal = terminalBeliefCallback(currentBelief); terminal.has_value()) {
@@ -67,10 +67,9 @@ bool BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::performExplor
 
 template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
 struct StandardDiscoverCallback {
-    using InfoType = typename BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::StandardExplorationInformation;
-    InfoType& info;
+    StandardExplorationInformation<BeliefMdpValueType, BeliefType>& info;
 
-    StandardDiscoverCallback(InfoType& info) : info(info) {
+    StandardDiscoverCallback(StandardExplorationInformation<BeliefMdpValueType, BeliefType>& info) : info(info) {
         // Intentionally left empty
     }
     void operator()(BeliefType&& bel, typename BeliefType::ValueType&& val) {
@@ -83,24 +82,31 @@ struct StandardDiscoverCallback {
 };
 
 template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
+struct RewardAwareDiscoverCallback {
+    RewardAwareExplorationInformation<BeliefMdpValueType, BeliefType>& info;
+
+    RewardAwareDiscoverCallback(RewardAwareExplorationInformation<BeliefMdpValueType, BeliefType>& info) : info(info) {
+        // Intentionally left empty
+    }
+    void operator()(BeliefType&& bel, typename BeliefType::ValueType&& val, std::vector<BeliefMdpValueType> const& rewards) {
+        auto const belId = info.discoveredBeliefs.getIdOrAddBelief(std::move(bel));
+        if (info.exploredBeliefs.count(belId) == 0u && info.terminalBeliefValues.count(belId) == 0u) {
+            info.queue.push(belId);
+        }
+        info.matrix.transitions.push_back({storm::utility::convertNumber<BeliefMdpValueType>(val), belId, rewards});
+    }
+};
+
+template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
 BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::BeliefExploration(PomdpType const& pomdp) : firstStateNextStateGenerator(pomdp) {
     // Intentionally left empty.
 }
 
-template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
-typename BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::StandardExplorationInformation
-BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::initializeStandardExploration(ExplorationQueueOrder const explorationQueueOrder) {
-    StandardExplorationInformation info;
-    info.queue.changeOrder(explorationQueueOrder);
-    info.initialBeliefId = info.discoveredBeliefs.addBelief(firstStateNextStateGenerator.computeInitialBelief());
-    info.queue.push(info.initialBeliefId);
-    return info;
-}
 
 template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
 void BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::resumeExploration(
-    StandardExplorationInformation& info, TerminalBeliefCallback const& terminalBeliefCallback, TerminationCallback const& terminationCallback,
-    storm::OptionalRef<std::string const> rewardModelName, storm::OptionalRef<FreudenthalTriangulationBeliefAbstraction<BeliefType>> abstraction) {
+    StandardExplorationInformation<BeliefMdpValueType, BeliefType>& info, TerminalBeliefCallback const& terminalBeliefCallback,
+    TerminationCallback const& terminationCallback, storm::OptionalRef<std::string const> rewardModelName, storm::OptionalRef<FreudenthalTriangulationBeliefAbstraction<BeliefType>> abstraction) {
     if (rewardModelName.has_value()) {
         firstStateNextStateGenerator.setRewardModel(rewardModelName.value());
     }
@@ -110,6 +116,21 @@ void BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::resumeExplora
                            terminationCallback);
     } else {
         performExploration(info, firstStateNextStateGenerator.getHandle(discoverCallback), terminalBeliefCallback, terminationCallback);
+    }
+}
+
+template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
+void BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::resumeRewardAwareExploration(
+    RewardAwareExplorationInformation<BeliefMdpValueType, BeliefType>& info, TerminalBeliefCallback const& terminalBeliefCallback,
+    TerminationCallback const& terminationCallback, RewardBoundedBeliefSplitter<BeliefMdpValueType, PomdpType, BeliefType> rewardSplitter,
+    storm::OptionalRef<FreudenthalTriangulationBeliefAbstraction<BeliefType>> abstraction) {
+    RewardAwareDiscoverCallback<BeliefMdpValueType, PomdpType, BeliefType> discoverCallback(info);
+    if (abstraction) {
+        performExploration(info, firstStateNextStateGenerator.getPrePostAbstractionHandle(rewardSplitter, abstraction.value(), discoverCallback),
+                           terminalBeliefCallback, terminationCallback);
+    } else {
+        performExploration(info, firstStateNextStateGenerator.getPreAbstractionHandle(rewardSplitter, discoverCallback), terminalBeliefCallback,
+                           terminationCallback);
     }
 }
 

@@ -25,6 +25,17 @@ class BeliefBasedModelChecker {
                                                         uint64_t resolution, bool useDynamic,
                                                         storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds);
 
+    std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfold(storm::Environment const& env, PropertyInformation const& propertyInformation,
+                                                               storm::pomdp::beliefs::BeliefBasedModelCheckerOptions<BeliefMdpValueType> const& options,
+                                                               storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds,
+                                                               std::vector<std::string> const& relevantRewardModelNames = {});
+
+    std::pair<BeliefMdpValueType, bool> checkRewardAwareDiscretize(storm::Environment const& env, PropertyInformation const& propertyInformation,
+                                                                   storm::pomdp::beliefs::BeliefBasedModelCheckerOptions<BeliefMdpValueType> const& options,
+                                                                   uint64_t resolution, bool useDynamic,
+                                                                   storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds,
+                                                                   std::vector<std::string> const& relevantRewardModelNames = {});
+
    private:
     PomdpModelType const& inputPomdp;
 };
