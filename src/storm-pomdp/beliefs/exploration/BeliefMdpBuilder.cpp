@@ -174,14 +174,14 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
     // First gather all cut-off information
     uint64_t nrCutOffChoices = 0ull;
     std::unordered_map<BeliefId, std::unordered_map<std::string, BeliefMdpValueType>> cutOffInformationMap;
-    for (auto const& frontierBeliefId : explorationInformation.frontierBeliefs) {
+    for (auto const& frontierBeliefId : explorationInformation.getFrontierBeliefs()) {
         auto const& frontierBelief = explorationInformation.discoveredBeliefs.getBeliefFromId(frontierBeliefId);
         cutOffInformationMap[frontierBeliefId] = computeCutOffValueMap(frontierBelief);
         nrCutOffChoices += cutOffInformationMap[frontierBeliefId].size();
     }
 
     uint64_t const numBottomTargetStates = reachabilityProbability ? 2ull : 1ull;
-    uint64_t const numExtraStates = numBottomTargetStates + explorationInformation.frontierBeliefs.size();
+    uint64_t const numExtraStates = numBottomTargetStates + explorationInformation.getFrontierBeliefs().size();
     uint64_t const numStates = explorationInformation.matrix.groups() + numExtraStates;
     uint64_t const numChoices = explorationInformation.matrix.rows() + numBottomTargetStates + nrCutOffChoices;
     uint64_t const targetState = numStates - (reachabilityProbability ? 2ull : 1ull);
