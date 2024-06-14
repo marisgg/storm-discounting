@@ -51,7 +51,6 @@ bool FormulaInformation::isUnsupported() const {
 }
 
 bool FormulaInformation::isBounded() const {
-    STORM_LOG_ASSERT(this->type == Type::NonNestedReachabilityProbability, "Sink states requested for unexpected formula type.");
     return rewardBounded;
 }
 
