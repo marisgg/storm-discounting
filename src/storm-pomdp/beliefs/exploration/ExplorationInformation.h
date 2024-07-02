@@ -14,8 +14,9 @@ struct ExplorationInformation {
     std::unordered_map<BeliefId, BeliefMdpValueType> terminalBeliefValues;
     BeliefId initialBeliefId;
     ExplorationQueue queue;
+    uint64_t nrObservationsInPomdp;
 
-    std::unordered_set<BeliefId> getFrontierBeliefs() const {
+    [[nodiscard]] std::unordered_set<BeliefId> getFrontierBeliefs() const {
         std::unordered_set<BeliefId> resFrontierBeliefs;
         for (uint64_t id = 0; id < discoveredBeliefs.getNumberOfBeliefIds(); id++) {
             if (exploredBeliefs.count(id) == 0 && terminalBeliefValues.count(id) == 0) {

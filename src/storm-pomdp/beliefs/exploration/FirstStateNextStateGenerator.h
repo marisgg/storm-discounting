@@ -128,13 +128,14 @@ struct NextStateGeneratorHandle {
     template<typename... CallBackArgs>
     void applyPreAbstraction(BeliefType const& belief, uint64_t localActionIndex, CallBackArgs const&... additionalCallbackArgs) {
         if constexpr (isNoAbstraction<PreAbstractionType>) {
-            computeSuccessorBeliefs(belief, localActionIndex, storm::utility::one<BeliefValueType>(), additionalCallbackArgs...);
+            computeSuccessorBeliefs(belief, localActionIndex, storm::utility::one<BeliefValueType>(), DefaultActionObservation, additionalCallbackArgs...);
         } else {
             preAbstraction.abstract(belief, localActionIndex,
                                     [this, &localActionIndex, &additionalCallbackArgs...](BeliefType&& preBel, BeliefValueType&& preVal,
+                                                                                          BeliefActionObservationType actionObservation,
                                                                                           auto const&... additionalPreAbstractionArgs) {
-                                        computeSuccessorBeliefs(preBel, localActionIndex, std::move(preVal),
-                                                                std::forward<CallBackArgs const>(additionalCallbackArgs)...,
+                    computeSuccessorBeliefs(preBel, localActionIndex, std::move(preVal), actionObservation,
+                                            std::forward<CallBackArgs const>(additionalCallbackArgs)...,
                                                                 std::forward<decltype(additionalPreAbstractionArgs)>(additionalPreAbstractionArgs)...);
                                     });
         }
@@ -143,12 +144,13 @@ struct NextStateGeneratorHandle {
     /*!
      * @return the probability we go to each observation when starting in the given belief and performing the given action
      */
-    std::unordered_map<BeliefObservationType, BeliefValueType> computeSuccessorObservations(BeliefType const& belief, uint64_t localActionIndex) {
+    std::unordered_map<BeliefObservationType, BeliefValueType> computeSuccessorObservations(BeliefType const& belief, uint64_t localActionIndex,
+                                                                                            BeliefActionObservationType actionObservation) {
         std::unordered_map<BeliefObservationType, BeliefValueType> successorObservations;
-        belief.forEach([&localActionIndex, &successorObservations, this](BeliefStateType const& state, BeliefValueType const& beliefValue) {
+        belief.forEach([&localActionIndex, &successorObservations, &actionObservation, this](BeliefStateType const& state, BeliefValueType const& beliefValue) {
             for (auto const& pomdpTransition : pomdp.getTransitionMatrix().getRow(state, localActionIndex)) {
                 if (!storm::utility::isZero(pomdpTransition.getValue())) {
-                    auto const obs = pomdp.getObservation(pomdpTransition.getColumn());
+                    auto const obs = (pomdp.getNrObservations() * actionObservation) + pomdp.getObservation(pomdpTransition.getColumn());
                     BeliefValueType const val = beliefValue * storm::utility::convertNumber<BeliefValueType>(pomdpTransition.getValue());
                     if (auto [insertionIt, inserted] = successorObservations.emplace(obs, val); !inserted) {
                         insertionIt->second += val;
@@ -168,15 +170,15 @@ struct NextStateGeneratorHandle {
 
     template<typename... CallBackArgs>
     void computeSuccessorBeliefs(BeliefType const& belief, uint64_t localActionIndex, BeliefValueType const& transitionProbability,
-                                 CallBackArgs const&... additionalCallbackArgs) {
+                                 BeliefActionObservationType actionObservation, CallBackArgs const&... additionalCallbackArgs) {
         // For each successor observation we build the successor belief
-        auto const successorObservations = computeSuccessorObservations(belief, localActionIndex);
+        auto const successorObservations = computeSuccessorObservations(belief, localActionIndex, actionObservation);
         for (auto const& successorObsValue : successorObservations) {
             BeliefBuilder<BeliefType> builder;
             builder.setObservation(successorObsValue.first);
             belief.forEach([&builder, &localActionIndex, &successorObsValue, this](BeliefStateType const& state, BeliefValueType const& beliefValue) {
                 for (auto const& pomdpTransition : pomdp.getTransitionMatrix().getRow(state, localActionIndex)) {
-                    if (pomdp.getObservation(pomdpTransition.getColumn()) == successorObsValue.first) {
+                    if (pomdp.getObservation(pomdpTransition.getColumn()) == (successorObsValue.first % pomdp.getNrObservations())) {
                         BeliefValueType const prob =
                             beliefValue * storm::utility::convertNumber<BeliefValueType>(pomdpTransition.getValue()) / successorObsValue.second;
                         builder.addValue(pomdpTransition.getColumn(), prob);

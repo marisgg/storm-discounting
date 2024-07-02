@@ -8,6 +8,8 @@ namespace storm::pomdp::beliefs {
 using BeliefStateType = uint64_t;
 using BeliefObservationType = uint32_t;
 using BeliefId = uint64_t;
+using BeliefActionObservationType = uint32_t;
+constexpr BeliefActionObservationType DefaultActionObservation = 0;
 
 template<typename BeliefValueType>
 using BeliefFlatMap = boost::container::flat_map<BeliefStateType, BeliefValueType>;

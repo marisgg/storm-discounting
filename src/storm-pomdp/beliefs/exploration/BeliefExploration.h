@@ -29,11 +29,12 @@ class BeliefExploration {
     BeliefExploration(PomdpType const& pomdp);
 
     template<typename InfoType>
-    InfoType initializeExploration(ExplorationQueueOrder const explorationQueueOrder = ExplorationQueueOrder::Unordered) {
+    InfoType initializeExploration(uint64_t nrObservationsInPomdp, ExplorationQueueOrder const explorationQueueOrder = ExplorationQueueOrder::Unordered) {
         InfoType info;
         info.queue.changeOrder(explorationQueueOrder);
         info.initialBeliefId = info.discoveredBeliefs.addBelief(firstStateNextStateGenerator.computeInitialBelief());
         info.queue.push(info.initialBeliefId);
+        info.nrObservationsInPomdp = nrObservationsInPomdp;
         return info;
     }
 

@@ -39,13 +39,16 @@ class RewardBoundedBeliefSplitter {
         });
 
         for (auto& [rewardVector, builder] : splitBeliefs) {
+            if (rewardVectorToIndex.count(rewardVector) == 0u) {
+                rewardVectorToIndex[rewardVector] = rewardVectorToIndex.size();
+            }
             builder.setObservation(belief.observation());
             if (splitBeliefs.size() == 1u) {
                 // Fix the distribution to diminish numerical issues a bit
-                callback(builder.build(), storm::utility::one<BeliefValueType>(), rewardVector);
+                callback(builder.build(), storm::utility::one<BeliefValueType>(), rewardVectorToIndex[rewardVector], rewardVector);
             } else {
                 auto val = builder.normalize();
-                callback(builder.build(), std::move(val), rewardVector);
+                callback(builder.build(), std::move(val), rewardVectorToIndex[rewardVector], rewardVector);
             }
         }
     }
@@ -53,5 +56,6 @@ class RewardBoundedBeliefSplitter {
    private:
     PomdpType const& pomdp;
     std::vector<RewardVectorType> actionRewardVectors;
+    std::map<RewardVectorType, BeliefActionObservationType> rewardVectorToIndex;
 };
 }  // namespace storm::pomdp::beliefs

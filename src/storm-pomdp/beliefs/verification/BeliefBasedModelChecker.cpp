@@ -94,6 +94,11 @@ typename BeliefExploration<BeliefMdpValueType, PomdpModelType, BeliefType>::Term
                 }
             };
         }
+    } else if (propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
+        return [](BeliefType const& belief) -> std::optional<BeliefMdpValueType> {
+            // For reward-bounded properties, we cannot be sure that a target belief is terminal as we are not bound-aware at this point
+            return std::nullopt;
+        };
     } else if (options.maxGapToCut.has_value()) {
         // Terminate if the gap is small enough
         return [&propertyInformation, &valueBounds, maxGapToCut = options.maxGapToCut.value()](BeliefType const& belief) -> std::optional<BeliefMdpValueType> {
@@ -183,7 +188,7 @@ std::pair<BeliefMdpValueType, bool> checkUnfoldOrDiscretize(storm::Environment c
     storm::utility::Stopwatch swExplore(true);
     BeliefExplorationType exploration(pomdp);
 
-    auto info = exploration.template initializeExploration<InfoType>();
+    auto info = exploration.template initializeExploration<InfoType>(pomdp.getNrObservations());
 
     // Determine terminationCallback based on options
     typename BeliefExplorationType::TerminationCallback terminationCallback =
@@ -244,7 +249,7 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
     storm::utility::Stopwatch swExplore(true);
     BeliefExplorationType exploration(pomdp);
     using InfoType = RewardAwareExplorationInformation<BeliefMdpValueType, BeliefType>;
-    auto info = exploration.template initializeExploration<InfoType>();
+    auto info = exploration.template initializeExploration<InfoType>(pomdp.getNrObservations());
 
     // Determine terminationCallback based on options
     typename BeliefExplorationType::TerminationCallback terminationCallback =

@@ -313,6 +313,21 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
         stateLabeling.addLabel("target");
         stateLabeling.addLabelToState("target", targetState);
     }
+    if (propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
+        stateLabeling.addLabel("targetObservation");
+        for (auto const& [belId, state] : explorationInformation.exploredBeliefs) {
+            if (propertyInformation.targetObservations.count(explorationInformation.discoveredBeliefs.getBeliefFromId(belId).observation() %
+                                                             explorationInformation.nrObservationsInPomdp) > 0) {
+                stateLabeling.addLabelToState("targetObservation", state);
+            }
+        }
+        for (auto const& belId : explorationInformation.getFrontierBeliefs()) {
+            if (propertyInformation.targetObservations.count(explorationInformation.discoveredBeliefs.getBeliefFromId(belId).observation() %
+                                                             explorationInformation.nrObservationsInPomdp) > 0) {
+                stateLabeling.addLabelToState("targetObservation", frontierBeliefToStateMap.at(belId));
+            }
+        }
+    }
     storm::storage::sparse::ModelComponents<BeliefMdpValueType> components(transitionBuilder.build(), std::move(stateLabeling));
 
     if (!reachabilityProbability) {
