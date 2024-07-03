@@ -410,11 +410,6 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
     }
 
     if (formula) {
-        if(formula->asProbabilityOperatorFormula().hasOptimalityType()) {
-            std::cout << "HAS OPT TYPE\n";
-        } else{
-            std::cout << "HAS NO OPT TYPE\n";
-        }
         if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula()) {
             auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
             auto unfoldedStuff = unfolder.unfold(pomdp, *formula.get());

@@ -4,6 +4,10 @@
 
 #ifndef STORM_BOUNDUNFOLDER_H
 #define STORM_BOUNDUNFOLDER_H
+
+#include <logic/TimeBoundType.h>
+
+#include <utility>
 #include "logic/QuantileFormula.h"
 #include "models/sparse/Pomdp.h"
 #include "logic/ProbabilityOperatorFormula.h"
@@ -16,10 +20,10 @@ class BoundUnfolder {
     struct UnfoldingResult {
         std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp;
         std::shared_ptr<storm::logic::Formula> formula;
-        std::map<std::pair<uint_fast64_t, ValueType>, uint_fast64_t> stateEpochToNewState;
-        std::map<uint_fast64_t, std::pair<uint_fast64_t, ValueType>> newStateToStateEpoch;
-        UnfoldingResult(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, std::shared_ptr<storm::logic::Formula> formula, std::map<std::pair<uint_fast64_t, ValueType>, uint_fast64_t> stateEpochToNewState, std::map<uint_fast64_t, std::pair<uint_fast64_t, ValueType>> newStateToStateEpoch)
-            : pomdp(pomdp), formula(formula), stateEpochToNewState(stateEpochToNewState), newStateToStateEpoch(newStateToStateEpoch){}
+        std::map<std::pair<uint_fast64_t, std::map<std::string, ValueType>>, uint_fast64_t> stateEpochsToNewState;
+        std::map<uint_fast64_t, std::pair<uint_fast64_t, std::map<std::string, ValueType>>> newStateToStateEpochs;
+        UnfoldingResult(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, std::shared_ptr<storm::logic::Formula> formula, std::map<std::pair<uint_fast64_t, std::map<std::string, ValueType>>, uint_fast64_t> stateEpochsToNewState, std::map<uint_fast64_t, std::pair<uint_fast64_t, std::map<std::string, ValueType>>> newStateToStateEpochs)
+            : pomdp(pomdp), formula(std::move(formula)), stateEpochsToNewState(stateEpochsToNewState), newStateToStateEpochs(newStateToStateEpochs){}
     };
 
     BoundUnfolder() = default;
@@ -34,7 +38,9 @@ class BoundUnfolder {
         std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, const storm::logic::Formula& formula);
 
    private:
-    ValueType getBound(const storm::logic::Formula& formula);
+    ValueType getUpperBound(const storm::logic::BoundedUntilFormula& formula, uint64_t i);
+    ValueType getLowerBound(const storm::logic::BoundedUntilFormula& formula, uint64_t i);
+    std::pair<std::map<std::string, ValueType>, std::map<std::string, ValueType>> getBounds(const storm::logic::Formula& formula);
 };
 
 }  // namespace transformer
