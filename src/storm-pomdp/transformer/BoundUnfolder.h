@@ -1,9 +1,4 @@
-//
-// Created by spook on 26.04.23.
-//
-
-#ifndef STORM_BOUNDUNFOLDER_H
-#define STORM_BOUNDUNFOLDER_H
+#pragma once
 
 #include <logic/TimeBoundType.h>
 
@@ -40,9 +35,8 @@ class BoundUnfolder {
    private:
     ValueType getUpperBound(const storm::logic::BoundedUntilFormula& formula, uint64_t i);
     ValueType getLowerBound(const storm::logic::BoundedUntilFormula& formula, uint64_t i);
-    std::pair<std::map<std::string, ValueType>, std::map<std::string, ValueType>> getBounds(const storm::logic::Formula& formula);
+    std::pair<std::unordered_map<std::string, ValueType>, std::unordered_map<std::string, ValueType>> getBounds(const storm::logic::Formula& formula);
 };
 
 }  // namespace transformer
 }  // namespace storm
-#endif  // STORM_BOUNDUNFOLDER_H

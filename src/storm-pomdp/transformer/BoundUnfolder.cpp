@@ -1,7 +1,3 @@
-//
-// Created by spook on 26.04.23.
-//
-
 #include "BoundUnfolder.h"
 #include <logic/BoundToUnboundVisitor.h>
 #include <queue>
@@ -19,11 +15,6 @@ namespace transformer {
 template<typename ValueType>
 typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unfold(
     std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, const storm::logic::Formula& formula) {
-    /*std::cout << "\nORIGINAL POMDP:\n";
-    originalPomdp->writeDotToStream(std::cout);
-    std::cout << "\nORIGINAL FORMULA:\n";
-    formula->writeToStream(std::cout);*/
-
     // Check formula
     STORM_LOG_THROW(formula.isProbabilityOperatorFormula() && formula.asOperatorFormula().getSubformula().isBoundedUntilFormula() &&
                         formula.asOperatorFormula().getSubformula().asBoundedUntilFormula().getLeftSubformula().isTrueFormula(),
@@ -33,45 +24,45 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
     //STORM_LOG_THROW(rewModel.hasStateActionRewards(), storm::exceptions::NotSupportedException, "Only state action rewards are currently supported.");
 
     // Grab bounds
-    std::map<std::string, ValueType> upperBounds, lowerBounds;
+    std::unordered_map<std::string, ValueType> upperBounds, lowerBounds;
     std::tie(upperBounds, lowerBounds) = getBounds(formula);
-    uint_fast64_t totalNumberOfBounds = upperBounds.size() + lowerBounds.size();
+    uint64_t totalNumberOfBounds = upperBounds.size() + lowerBounds.size();
 
     // Grab matrix (mostly for coding convenience to just have it in a variable here)
     auto& ogMatrix = originalPomdp->getTransitionMatrix();
 
     // Grab goal states
-    auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*originalPomdp, formula);
-    auto targetStates = formulaInfo.getTargetStates().states;
+    storm::pomdp::analysis::FormulaInformation formulaInfo = storm::pomdp::analysis::getFormulaInformation(*originalPomdp, formula);
+    storm::storage::BitVector targetStates = formulaInfo.getTargetStates().states;
 
     // Transformation information + variables (remove non-necessary ones later)
-    auto stateEpochsToNewState = std::map<std::pair<uint_fast64_t, std::map<std::string, ValueType>>, uint_fast64_t>();
-    auto newStateToStateEpoch = std::map<uint_fast64_t, std::pair<uint_fast64_t, std::map<std::string, ValueType>>>();
-    uint_fast64_t nextNewStateIndex = 2;
-    std::queue<std::pair<uint_fast64_t, std::map<std::string, ValueType>>> processingQ;  // queue does BFS, if DFS is desired, change to stack
+    auto stateEpochsToNewState = std::map<std::pair<uint64_t, std::map<std::string, ValueType>>, uint64_t>();
+    auto newStateToStateEpoch = std::map<uint64_t, std::pair<uint64_t, std::map<std::string, ValueType>>>();
+    uint64_t nextNewStateIndex = 2;
+    std::queue<std::pair<uint64_t, std::map<std::string, ValueType>>> processingQ;  // queue does BFS, if DFS is desired, change to stack
 
     // Information for unfolded model
-    auto transitions = std::vector<std::vector<std::map<uint_fast64_t, ValueType>>>();
+    auto transitions = std::vector<std::vector<std::map<uint64_t, ValueType>>>();
     // first index (vec): origin state, second index(vec): action, third index(map): destination state, value(map):probability
     auto observations = std::vector<uint32_t>();
-    uint_fast64_t entryCount = 0;
-    uint_fast64_t choiceCount = 0;
+    uint64_t entryCount = 0;
+    uint64_t choiceCount = 0;
 
     // Special sink states: 0 is =), 1 is =(
-    transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
-    transitions[0].push_back(std::map<uint_fast64_t, ValueType>());
+    transitions.push_back(std::vector<std::map<uint64_t, ValueType>>());
+    transitions[0].push_back(std::map<uint64_t, ValueType>());
     transitions[0][0][0] = storm::utility::one<ValueType>();
     entryCount++;
     choiceCount++;
-    transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
-    transitions[1].push_back(std::map<uint_fast64_t, ValueType>());
+    transitions.push_back(std::vector<std::map<uint64_t, ValueType>>());
+    transitions[1].push_back(std::map<uint64_t, ValueType>());
     transitions[1][0][1] = storm::utility::one<ValueType>();
     entryCount++;
     choiceCount++;
 
     // Create init state of unfolded model
     STORM_LOG_ASSERT(originalPomdp->getInitialStates().getNumberOfSetBits() == 1, "This has more than one initial state");
-    uint_fast64_t initState = originalPomdp->getInitialStates().getNextSetIndex(0);
+    uint64_t initState = originalPomdp->getInitialStates().getNextSetIndex(0);
     std::map<std::string, ValueType> initEpochs;
     for (const auto& rewBound : upperBounds) {
         initEpochs[rewBound.first + "_ub"] = rewBound.second;
@@ -82,9 +73,9 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
     auto initStateEpochs = std::make_pair(initState, initEpochs);
     processingQ.push(initStateEpochs);
     auto numberOfActions = ogMatrix.getRowGroupSize(initState);
-    transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
-    for (auto i = 0; i < numberOfActions; i++) {
-        transitions[nextNewStateIndex].push_back(std::map<uint_fast64_t, ValueType>());
+    transitions.push_back(std::vector<std::map<uint64_t, ValueType>>());
+    for (uint64_t i = 0ul; i < numberOfActions; ++i) {
+        transitions[nextNewStateIndex].push_back(std::map<uint64_t, ValueType>());
         choiceCount++;
     }
     stateEpochsToNewState[initStateEpochs] = nextNewStateIndex;
@@ -92,17 +83,17 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
     nextNewStateIndex++;
 
     while (!processingQ.empty()) {
-        std::pair<uint_fast64_t, std::map<std::string, ValueType>> currentStateEpochsPair = processingQ.front(); // the state here is a state in the original pomdp
+        std::pair<uint64_t, std::map<std::string, ValueType>> currentStateEpochsPair = processingQ.front();  // the state here is a state in the original pomdp
         processingQ.pop();
-        uint_fast64_t rowGroupStart = ogMatrix.getRowGroupIndices()[currentStateEpochsPair.first];
-        uint_fast64_t rowGroupSize = ogMatrix.getRowGroupSize(currentStateEpochsPair.first);
-        for (auto actionIndex = 0; actionIndex < rowGroupSize; actionIndex++) {
+        uint64_t rowGroupStart = ogMatrix.getRowGroupIndices()[currentStateEpochsPair.first];
+        uint64_t rowGroupSize = ogMatrix.getRowGroupSize(currentStateEpochsPair.first);
+        for (uint64_t actionIndex = 0ul; actionIndex < rowGroupSize; actionIndex++) {
             auto row = rowGroupStart + actionIndex;
             std::map<std::string, ValueType> epochValues;
 
             // Collect epoch values of upper bounds
             bool upperBoundViolated = false;
-            for (auto ub : upperBounds) {
+            for (auto const& ub : upperBounds) {
                 ValueType reward = originalPomdp->getRewardModel(ub.first).getStateActionReward(row);
                 if (reward > currentStateEpochsPair.second[ub.first + "_ub"]) {// 0 for upper bounds means we can still keep going as long as we dont collect any more of the reward
                     // Entire action goes to =( with prob 1
@@ -117,8 +108,8 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
             if (upperBoundViolated) continue;
 
             // Collect epoch values of lower bounds
-            uint_fast64_t fulfilledLowerBounds = 0;
-            for (auto lb : lowerBounds) {
+            uint64_t fulfilledLowerBounds = 0;
+            for (auto const& lb : lowerBounds) {
                 ValueType reward = originalPomdp->getRewardModel(lb.first).getStateActionReward(row);
                 if (reward >= currentStateEpochsPair.second[lb.first + "_lb"]) {// 0 for lower bounds means we have fulfilled the bound
                     epochValues[lb.first + "_lb"] = storm::utility::zero<ValueType>();
@@ -130,9 +121,9 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
             bool lowerBoundsFulfilled = fulfilledLowerBounds == lowerBounds.size();
 
             // Per transition
-            for (auto entry : ogMatrix.getRow(row)) {
+            for (auto const& entry : ogMatrix.getRow(row)) {
                 // get successor in og pomdp
-                uint_fast64_t oldSuccState = entry.getColumn();
+                uint64_t oldSuccState = entry.getColumn();
                 if (targetStates[oldSuccState] && lowerBoundsFulfilled) {
                     // transition to =) with prob. of the successor (but check if there already is a transition going to =) and if so, just add to it)
                     if (transitions[stateEpochsToNewState[currentStateEpochsPair]][actionIndex].find(0) == transitions[stateEpochsToNewState[currentStateEpochsPair]][actionIndex].end()){
@@ -146,7 +137,7 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
                     // if not, create it + add it to the queue
                     auto succEpochs = std::make_pair(oldSuccState, epochValues);
                     auto searchRes = stateEpochsToNewState.find(succEpochs);
-                    uint_fast64_t unfSuccState;
+                    uint64_t unfSuccState;
                     if (searchRes != stateEpochsToNewState.end()) { // exists already
                         unfSuccState = searchRes->second;
                     } else {
@@ -154,9 +145,9 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
                         stateEpochsToNewState[succEpochs] = nextNewStateIndex;
                         newStateToStateEpoch[nextNewStateIndex] = succEpochs;
                         numberOfActions = ogMatrix.getRowGroupSize(oldSuccState);
-                        transitions.push_back(std::vector<std::map<uint_fast64_t, ValueType>>());
+                        transitions.push_back(std::vector<std::map<uint64_t, ValueType>>());
                         for (auto i = 0; i < numberOfActions; i++) {
-                            transitions[nextNewStateIndex].push_back(std::map<uint_fast64_t, ValueType>());
+                            transitions[nextNewStateIndex].push_back(std::map<uint64_t, ValueType>());
                             choiceCount++;
                         }
                         nextNewStateIndex++;
@@ -173,7 +164,7 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
     // Observations
     observations.push_back(originalPomdp->getNrObservations());      // =)
     observations.push_back(originalPomdp->getNrObservations() + 1);  // =(
-    for (uint_fast64_t i = 2; i < nextNewStateIndex; i++) {
+    for (uint64_t i = 2ul; i < nextNewStateIndex; i++) {
         observations.push_back(originalPomdp->getObservation(newStateToStateEpoch[i].first));
     }
 
@@ -188,10 +179,10 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
 
     // Build Matrix (taken from beliefmdpexplorer + adapted)
     storm::storage::SparseMatrixBuilder<ValueType> builder(choiceCount, nextNewStateIndex, entryCount, true, true, nextNewStateIndex);
-    uint_fast64_t nextMatrixRow = 0;
-    for (uint_fast64_t state = 0; state < transitions.size(); state++) {
+    uint64_t nextMatrixRow = 0;
+    for (uint64_t state = 0ul; state < transitions.size(); state++) {
         builder.newRowGroup(nextMatrixRow);
-        for (auto action = 0; action < transitions[state].size(); action++) {
+        for (uint64_t action = 0ul; action < transitions[state].size(); action++) {
             for (auto const& entry : transitions[state][action]) {
                 builder.addNextValue(nextMatrixRow, entry.first, entry.second);
             }
@@ -213,11 +204,11 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
 
         //assert (unfoldedTransitionMatrix.getRowGroupSize(0) + unfoldedTransitionMatrix.getRowGroupSize(1) == newRowGroupIndices[2]);
 
-        for (uint_fast64_t newState = 2; newState < transitions.size(); newState++) {
+        for (uint64_t newState = 2ul; newState < transitions.size(); newState++) {
             auto oldState = newStateToStateEpoch[newState].first;
             auto oldChoiceIndex = oldRowGroupIndices[oldState];
             auto newChoiceIndex = newRowGroupIndices[newState];
-            for (auto action = 0; action < transitions[newState].size(); action++) {
+            for (uint64_t action = 0ul; action < transitions[newState].size(); action++) {
                 for (auto label : oldChoiceLabeling.getLabelsOfChoice(oldChoiceIndex + action)) {
                     if (!newChoiceLabeling.containsLabel(label)) {
                         newChoiceLabeling.addLabel(label);
@@ -237,12 +228,7 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
 
     // Drop Bounds from Until Formula
     auto vis = storm::logic::BoundToUnboundVisitor();
-    auto newFormula = vis.dropBounds(formula);
-
-    /*std::cout << "\nUNFOLDED POMDP:\n";
-    pomdp->writeDotToStream(std::cout);
-    std::cout << "\nNEW FORMULA:\n";
-    newFormula->writeToStream(std::cout);*/
+    std::shared_ptr<storm::logic::Formula> newFormula = vis.dropBounds(formula);
 
     // Put result together
     return UnfoldingResult(std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)), newFormula, std::move(stateEpochsToNewState), std::move(newStateToStateEpoch));
@@ -269,11 +255,12 @@ storm::RationalNumber BoundUnfolder<storm::RationalNumber>::getLowerBound(const 
 }
 
 template<typename ValueType>
-std::pair<std::map<std::string, ValueType>, std::map<std::string, ValueType>> BoundUnfolder<ValueType>::getBounds(const logic::Formula &formula) {
+std::pair<std::unordered_map<std::string, ValueType>, std::unordered_map<std::string, ValueType>> BoundUnfolder<ValueType>::getBounds(
+    const logic::Formula& formula) {
     STORM_LOG_ASSERT(formula.isOperatorFormula() && formula.asOperatorFormula().getSubformula().isBoundedUntilFormula(), "Formula is not the right kind");
     auto buFormula = formula.asOperatorFormula().getSubformula().asBoundedUntilFormula();
-    std::map<std::string, ValueType> upperBounds;
-    std::map<std::string, ValueType> lowerBounds;
+    std::unordered_map<std::string, ValueType> upperBounds;
+    std::unordered_map<std::string, ValueType> lowerBounds;
 
     for (uint64_t i = 0; i < buFormula.getDimension(); i++) {
         STORM_LOG_ASSERT(buFormula.getTimeBoundReference(i).hasRewardModelName(), "The reward model has no name");
@@ -309,7 +296,7 @@ std::pair<std::map<std::string, ValueType>, std::map<std::string, ValueType>> Bo
             }
         }
     }
-    return std::make_pair(upperBounds, lowerBounds);//pair<std::map<storm::logic::TimeBoundReference, ValueType>, std::map<storm::logic::TimeBoundReference, ValueType>>();
+    return std::make_pair(upperBounds, lowerBounds);
 }
 
 template class BoundUnfolder<double>;
