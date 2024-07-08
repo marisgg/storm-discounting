@@ -9,6 +9,7 @@
 #include "storm/models/sparse/Dtmc.h"
 #include "storm/models/sparse/StandardRewardModel.h"
 
+#include "storm/logic/OperatorFormula.h"
 #include "storm/storage/BitVector.h"
 #include "storm/storage/SparseMatrix.h"
 
@@ -60,6 +61,16 @@ class SparseDtmcPrctlHelper {
                                                       storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                       storm::storage::SparseMatrix<ValueType> const& backwardTransitions, RewardModelType const& rewardModel,
                                                       bool qualitative, ModelCheckerHint const& hint = ModelCheckerHint());
+
+    static std::vector<ValueType> computeDiscountedCumulativeRewards(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal,
+                                                                     storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                     RewardModelType const& rewardModel, uint_fast64_t stepBound, ValueType discountFactor);
+
+    static std::vector<ValueType> computeDiscountedTotalRewards(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal,
+                                                                storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+                                                                storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
+                                                                RewardModelType const& rewardModel, bool qualitative, ValueType discountFactor,
+                                                                ModelCheckerHint const& hint = ModelCheckerHint());
 
     static std::vector<ValueType> computeReachabilityRewards(Environment const& env, storm::solver::SolveGoal<ValueType>&& goal,
                                                              storm::storage::SparseMatrix<ValueType> const& transitionMatrix,

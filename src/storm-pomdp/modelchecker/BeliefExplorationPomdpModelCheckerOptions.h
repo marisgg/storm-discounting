@@ -21,6 +21,7 @@ struct BeliefExplorationPomdpModelCheckerOptions {
     bool discretize;
     bool unfold;
 
+    bool useRevisedImplementation = false;
     bool useClipping = false;
     bool interactiveUnfolding = false;
     bool refine = false;
@@ -57,6 +58,8 @@ struct BeliefExplorationPomdpModelCheckerOptions {
     bool dynamicTriangulation = true;  // Sets whether the triangulation is done in a dynamic way (yielding more precise triangulations)
 
     storm::builder::ExplorationHeuristic explorationHeuristic = storm::builder::ExplorationHeuristic::BreadthFirst;
+
+    bool recomputeInitialValueWithoutDiscounting = false;
 
     bool beliefLabeling = false;
     bool exportBeliefMdpAsDot = false;

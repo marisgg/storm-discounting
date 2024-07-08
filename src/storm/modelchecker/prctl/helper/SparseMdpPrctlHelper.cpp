@@ -4,6 +4,7 @@
 
 #include "storm/modelchecker/prctl/helper/SemanticSolutionType.h"
 
+#include "storm/modelchecker/helper/DiscountingHelper.h"
 #include "storm/modelchecker/hints/ExplicitModelCheckerHint.h"
 #include "storm/modelchecker/prctl/helper/BaierUpperRewardBoundsComputer.h"
 #include "storm/modelchecker/prctl/helper/DsMpiUpperRewardBoundsComputer.h"
@@ -167,24 +168,40 @@ std::vector<uint_fast64_t> computeValidSchedulerHint(Environment const& env, Sem
                                                      storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
                                                      storm::storage::SparseMatrix<ValueType> const& backwardTransitions,
                                                      storm::storage::BitVector const& maybeStates, storm::storage::BitVector const& filterStates,
-                                                     storm::storage::BitVector const& targetStates) {
+                                                     storm::storage::BitVector const& targetStates,
+                                                     boost::optional<storm::storage::BitVector> const& selectedChoices) {
     storm::storage::Scheduler<SolutionType> validScheduler(maybeStates.size());
 
     if (type == SemanticSolutionType::UntilProbabilities) {
-        storm::utility::graph::computeSchedulerProbGreater0E(transitionMatrix, backwardTransitions, filterStates, targetStates, validScheduler, boost::none);
+        storm::utility::graph::computeSchedulerProbGreater0E(transitionMatrix, backwardTransitions, filterStates, targetStates, validScheduler,
+                                                             selectedChoices);
     } else if (type == SemanticSolutionType::ExpectedRewards) {
         storm::utility::graph::computeSchedulerProb1E(maybeStates | targetStates, transitionMatrix, backwardTransitions, filterStates, targetStates,
-                                                      validScheduler);
+                                                      validScheduler, selectedChoices);
     } else {
         STORM_LOG_ASSERT(false, "Unexpected equation system type.");
     }
 
     // Extract the relevant parts of the scheduler for the solver.
-    std::vector<uint_fast64_t> schedulerHint(maybeStates.getNumberOfSetBits());
-    auto maybeIt = maybeStates.begin();
-    for (auto& choice : schedulerHint) {
-        choice = validScheduler.getChoice(*maybeIt).getDeterministicChoice();
-        ++maybeIt;
+    std::vector<uint64_t> schedulerHint;
+    schedulerHint.reserve(maybeStates.getNumberOfSetBits());
+    if (selectedChoices) {
+        // There might be unselected choices so the local choice indices from the scheduler need to be adapted
+        for (auto maybeState : maybeStates) {
+            auto choice = validScheduler.getChoice(maybeState).getDeterministicChoice();
+            auto const groupStart = transitionMatrix.getRowGroupIndices()[maybeState];
+            auto const origGlobalChoiceIndex = groupStart + choice;
+            STORM_LOG_ASSERT(selectedChoices->get(origGlobalChoiceIndex), "The computed scheduler selects an illegal choice.");
+            // Count the number of unselected choices in [groupStart, origGlobalChoiceIndex) and subtract that from choice
+            for (auto pos = selectedChoices->getNextUnsetIndex(groupStart); pos < origGlobalChoiceIndex; pos = selectedChoices->getNextUnsetIndex(pos + 1)) {
+                --choice;
+            }
+            schedulerHint.push_back(choice);
+        }
+    } else {
+        for (auto maybeState : maybeStates) {
+            schedulerHint.push_back(validScheduler.getChoice(maybeState).getDeterministicChoice());
+        }
     }
     return schedulerHint;
 }
@@ -364,8 +381,8 @@ SparseMdpHintType<SolutionType> computeHints(Environment const& env, SemanticSol
         // If the solver requires an initial scheduler, compute one now. Note that any scheduler is valid if there are no end components.
         if (requirements.validInitialScheduler() && !result.noEndComponents) {
             STORM_LOG_DEBUG("Computing valid scheduler, because the solver requires it.");
-            result.schedulerHint =
-                computeValidSchedulerHint<ValueType, SolutionType>(env, type, transitionMatrix, backwardTransitions, maybeStates, phiStates, targetStates);
+            result.schedulerHint = computeValidSchedulerHint<ValueType, SolutionType>(env, type, transitionMatrix, backwardTransitions, maybeStates, phiStates,
+                                                                                      targetStates, selectedChoices);
             requirements.clearValidInitialScheduler();
         }
 
@@ -646,6 +663,7 @@ boost::optional<SparseMdpEndComponentInformation<ValueType>> computeFixedPointSy
     if (doDecomposition) {
         // Compute the states that are in MECs.
         endComponentDecomposition = storm::storage::MaximalEndComponentDecomposition<ValueType>(transitionMatrix, backwardTransitions, candidateStates);
+        STORM_LOG_INFO(endComponentDecomposition.statistics(transitionMatrix.getRowGroupCount()));
     }
 
     // Only do more work if there are actually end-components.
@@ -965,6 +983,52 @@ MDPSparseModelCheckingHelperReturnType<SolutionType> SparseMdpPrctlHelper<ValueT
 
 template<typename ValueType, typename SolutionType>
 template<typename RewardModelType>
+std::vector<SolutionType> SparseMdpPrctlHelper<ValueType, SolutionType>::computeDiscountedCumulativeRewards(
+    Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+    RewardModelType const& rewardModel, uint_fast64_t stepBound, ValueType discountFactor) {
+    // Only compute the result if the model has at least one reward this->getModel().
+    STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
+
+    // Compute the reward vector to add in each step based on the available reward models.
+    std::vector<SolutionType> totalRewardVector = rewardModel.getTotalRewardVector(transitionMatrix);
+
+    // Initialize result to the zero vector.
+    std::vector<SolutionType> result(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+
+    auto multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, transitionMatrix);
+    multiplier->repeatedMultiplyAndReduceWithFactor(env, goal.direction(), result, &totalRewardVector, stepBound, discountFactor);
+
+    return result;
+}
+
+template<typename ValueType, typename SolutionType>
+template<typename RewardModelType>
+MDPSparseModelCheckingHelperReturnType<SolutionType> SparseMdpPrctlHelper<ValueType, SolutionType>::computeDiscountedTotalRewards(
+    Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+    storm::storage::SparseMatrix<ValueType> const& backwardTransitions, RewardModelType const& rewardModel, bool qualitative, bool produceScheduler,
+    ValueType discountFactor, ModelCheckerHint const& hint) {
+    std::vector<ValueType> b;
+
+    std::vector<SolutionType> x = std::vector<SolutionType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<SolutionType>());
+    b = rewardModel.getTotalRewardVector(transitionMatrix);
+    storm::modelchecker::helper::DiscountingHelper<ValueType> discountingHelper(transitionMatrix, discountFactor, produceScheduler);
+    discountingHelper.setUpViOperator();
+
+    discountingHelper.solveWithDiscountedValueIteration(env, goal.direction(), x, b);
+
+    std::unique_ptr<storm::storage::Scheduler<SolutionType>> scheduler;
+    if (produceScheduler) {
+        scheduler = std::make_unique<storm::storage::Scheduler<ValueType>>(discountingHelper.computeScheduler());
+    }
+    STORM_LOG_ASSERT(!produceScheduler || scheduler, "Expected that a scheduler was obtained.");
+    STORM_LOG_ASSERT((!produceScheduler && !scheduler) || !scheduler->isPartialScheduler(), "Expected a fully defined scheduler");
+    STORM_LOG_ASSERT((!produceScheduler && !scheduler) || scheduler->isDeterministicScheduler(), "Expected a deterministic scheduler");
+    STORM_LOG_ASSERT((!produceScheduler && !scheduler) || scheduler->isMemorylessScheduler(), "Expected a memoryless scheduler");
+    return MDPSparseModelCheckingHelperReturnType<SolutionType>(std::move(x), std::move(scheduler));
+}
+
+template<typename ValueType, typename SolutionType>
+template<typename RewardModelType>
 MDPSparseModelCheckingHelperReturnType<SolutionType> SparseMdpPrctlHelper<ValueType, SolutionType>::computeReachabilityRewards(
     Environment const& env, storm::solver::SolveGoal<ValueType, SolutionType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
     storm::storage::SparseMatrix<ValueType> const& backwardTransitions, RewardModelType const& rewardModel, storm::storage::BitVector const& targetStates,
@@ -1237,6 +1301,7 @@ boost::optional<SparseMdpEndComponentInformation<ValueType>> computeFixedPointSy
         // Then compute the states that are in MECs with zero reward.
         endComponentDecomposition =
             storm::storage::MaximalEndComponentDecomposition<ValueType>(transitionMatrix, backwardTransitions, candidateStates, zeroRewardChoices);
+        STORM_LOG_INFO(endComponentDecomposition.statistics(transitionMatrix.getRowGroupCount()));
     }
 
     // Only do more work if there are actually end-components.
@@ -1602,6 +1667,9 @@ template std::vector<double> SparseMdpPrctlHelper<double>::computeCumulativeRewa
                                                                                     storm::storage::SparseMatrix<double> const& transitionMatrix,
                                                                                     storm::models::sparse::StandardRewardModel<double> const& rewardModel,
                                                                                     uint_fast64_t stepBound);
+template std::vector<double> SparseMdpPrctlHelper<double>::computeDiscountedCumulativeRewards(
+    Environment const& env, storm::solver::SolveGoal<double>&& goal, storm::storage::SparseMatrix<double> const& transitionMatrix,
+    storm::models::sparse::StandardRewardModel<double> const& rewardModel, uint_fast64_t stepBound, double discountFactor);
 template MDPSparseModelCheckingHelperReturnType<double> SparseMdpPrctlHelper<double>::computeReachabilityRewards(
     Environment const& env, storm::solver::SolveGoal<double>&& goal, storm::storage::SparseMatrix<double> const& transitionMatrix,
     storm::storage::SparseMatrix<double> const& backwardTransitions, storm::models::sparse::StandardRewardModel<double> const& rewardModel,
@@ -1610,6 +1678,10 @@ template MDPSparseModelCheckingHelperReturnType<double> SparseMdpPrctlHelper<dou
     Environment const& env, storm::solver::SolveGoal<double>&& goal, storm::storage::SparseMatrix<double> const& transitionMatrix,
     storm::storage::SparseMatrix<double> const& backwardTransitions, storm::models::sparse::StandardRewardModel<double> const& rewardModel, bool qualitative,
     bool produceScheduler, ModelCheckerHint const& hint);
+template MDPSparseModelCheckingHelperReturnType<double> SparseMdpPrctlHelper<double>::computeDiscountedTotalRewards(
+    Environment const& env, storm::solver::SolveGoal<double>&& goal, storm::storage::SparseMatrix<double> const& transitionMatrix,
+    storm::storage::SparseMatrix<double> const& backwardTransitions, storm::models::sparse::StandardRewardModel<double> const& rewardModel, bool qualitative,
+    bool produceScheduler, double discountFactor, ModelCheckerHint const& hint);
 
 #ifdef STORM_HAVE_CARL
 template class SparseMdpPrctlHelper<storm::RationalNumber>;
@@ -1619,6 +1691,9 @@ template std::vector<storm::RationalNumber> SparseMdpPrctlHelper<storm::Rational
 template std::vector<storm::RationalNumber> SparseMdpPrctlHelper<storm::RationalNumber>::computeCumulativeRewards(
     Environment const& env, storm::solver::SolveGoal<storm::RationalNumber>&& goal, storm::storage::SparseMatrix<storm::RationalNumber> const& transitionMatrix,
     storm::models::sparse::StandardRewardModel<storm::RationalNumber> const& rewardModel, uint_fast64_t stepBound);
+template std::vector<storm::RationalNumber> SparseMdpPrctlHelper<storm::RationalNumber>::computeDiscountedCumulativeRewards(
+    Environment const& env, storm::solver::SolveGoal<storm::RationalNumber>&& goal, storm::storage::SparseMatrix<storm::RationalNumber> const& transitionMatrix,
+    storm::models::sparse::StandardRewardModel<storm::RationalNumber> const& rewardModel, uint_fast64_t stepBound, storm::RationalNumber discountFactor);
 template MDPSparseModelCheckingHelperReturnType<storm::RationalNumber> SparseMdpPrctlHelper<storm::RationalNumber>::computeReachabilityRewards(
     Environment const& env, storm::solver::SolveGoal<storm::RationalNumber>&& goal, storm::storage::SparseMatrix<storm::RationalNumber> const& transitionMatrix,
     storm::storage::SparseMatrix<storm::RationalNumber> const& backwardTransitions,
@@ -1629,6 +1704,11 @@ template MDPSparseModelCheckingHelperReturnType<storm::RationalNumber> SparseMdp
     storm::storage::SparseMatrix<storm::RationalNumber> const& backwardTransitions,
     storm::models::sparse::StandardRewardModel<storm::RationalNumber> const& rewardModel, bool qualitative, bool produceScheduler,
     ModelCheckerHint const& hint);
+template MDPSparseModelCheckingHelperReturnType<storm::RationalNumber> SparseMdpPrctlHelper<storm::RationalNumber>::computeDiscountedTotalRewards(
+    Environment const& env, storm::solver::SolveGoal<storm::RationalNumber>&& goal, storm::storage::SparseMatrix<storm::RationalNumber> const& transitionMatrix,
+    storm::storage::SparseMatrix<storm::RationalNumber> const& backwardTransitions,
+    storm::models::sparse::StandardRewardModel<storm::RationalNumber> const& rewardModel, bool qualitative, bool produceScheduler,
+    storm::RationalNumber discountFactor, ModelCheckerHint const& hint);
 #endif
 
 template class SparseMdpPrctlHelper<storm::Interval, double>;

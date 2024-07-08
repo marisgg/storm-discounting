@@ -6,14 +6,15 @@
 #include <set>
 #include <vector>
 
-#include "storm/storage/expressions/Expression.h"
-
+#include <boost/any.hpp>
 #include "storm/logic/FormulasForwardDeclarations.h"
 
 namespace storm {
 namespace expressions {
 class Variable;
-}
+class Expression;
+class ExpressionManager;
+}  // namespace expressions
 
 namespace logic {
 
@@ -79,10 +80,12 @@ class Formula : public std::enable_shared_from_this<Formula> {
 
     // Reward formulas.
     virtual bool isCumulativeRewardFormula() const;
+    virtual bool isDiscountedCumulativeRewardFormula() const;
     virtual bool isInstantaneousRewardFormula() const;
     virtual bool isReachabilityRewardFormula() const;
     virtual bool isLongRunAverageRewardFormula() const;
     virtual bool isTotalRewardFormula() const;
+    virtual bool isDiscountedTotalRewardFormula() const;
 
     // Expected time formulas.
     virtual bool isReachabilityTimeFormula() const;
@@ -194,6 +197,12 @@ class Formula : public std::enable_shared_from_this<Formula> {
 
     TotalRewardFormula& asTotalRewardFormula();
     TotalRewardFormula const& asTotalRewardFormula() const;
+
+    DiscountedCumulativeRewardFormula& asDiscountedCumulativeRewardFormula();
+    DiscountedCumulativeRewardFormula const& asDiscountedCumulativeRewardFormula() const;
+
+    DiscountedTotalRewardFormula& asDiscountedTotalRewardFormula();
+    DiscountedTotalRewardFormula const& asDiscountedTotalRewardFormula() const;
 
     InstantaneousRewardFormula& asInstantaneousRewardFormula();
     InstantaneousRewardFormula const& asInstantaneousRewardFormula() const;

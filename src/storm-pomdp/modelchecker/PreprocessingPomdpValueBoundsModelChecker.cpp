@@ -56,10 +56,8 @@ std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> Preproce
     for (uint64_t state = 0; state < pomdp.getNumberOfStates(); ++state) {
         auto& choiceDistribution = choiceDistributions[pomdp.getObservation(state)];
         ValueType const& stateValue = stateValues[state];
-        assert(stateValue >= storm::utility::zero<ValueType>());
         for (auto choice = choiceIndices[state]; choice < choiceIndices[state + 1]; ++choice) {
             ValueType const& choiceValue = choiceValues[choice];
-            assert(choiceValue >= storm::utility::zero<ValueType>());
             // Rate this choice by considering the relative difference between the choice value and the (optimal) state value
             // A high score shall mean that the choice is "good"
             if (storm::utility::isInfinity(stateValue)) {
@@ -153,7 +151,7 @@ std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>> Preproce
 }
 
 template<typename ValueType>
-std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>>
+[[maybe_unused]] std::pair<std::vector<ValueType>, storm::storage::Scheduler<ValueType>>
 PreprocessingPomdpValueBoundsModelChecker<ValueType>::computeValuesForRandomMemorylessPolicy(
     storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info,
     std::shared_ptr<storm::models::sparse::Mdp<ValueType>> underlyingMdp) {
@@ -188,8 +186,8 @@ PreprocessingPomdpValueBoundsModelChecker<ValueType>::computeValuesForRandomMemo
 template<typename ValueType>
 typename PreprocessingPomdpValueBoundsModelChecker<ValueType>::ValueBounds PreprocessingPomdpValueBoundsModelChecker<ValueType>::getValueBounds(
     storm::Environment const& env, storm::logic::Formula const& formula, storm::pomdp::analysis::FormulaInformation const& info) {
-    STORM_LOG_THROW(info.isNonNestedReachabilityProbability() || info.isNonNestedExpectedRewardFormula(), storm::exceptions::NotSupportedException,
-                    "The property type is not supported for this analysis.");
+    STORM_LOG_THROW(info.isNonNestedReachabilityProbability() || info.isNonNestedExpectedRewardFormula() || info.isDiscountedTotalRewardFormula(),
+                    storm::exceptions::NotSupportedException, "The property type is not supported for this analysis.");
 
     // Compute the values on the fully observable MDP
     // We need an actual MDP so that we can apply schedulers below.

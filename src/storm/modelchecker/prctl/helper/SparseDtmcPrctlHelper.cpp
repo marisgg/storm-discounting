@@ -14,6 +14,7 @@
 #include "storm/solver/LinearEquationSolver.h"
 #include "storm/solver/multiplier/Multiplier.h"
 
+#include "storm/modelchecker/helper/DiscountingHelper.h"
 #include "storm/modelchecker/hints/ExplicitModelCheckerHint.h"
 #include "storm/modelchecker/prctl/helper/DsMpiUpperRewardBoundsComputer.h"
 #include "storm/modelchecker/prctl/helper/rewardbounded/MultiDimensionalRewardUnfolding.h"
@@ -47,8 +48,8 @@ namespace helper {
 
 template<>
 std::map<storm::storage::sparse::state_type, storm::RationalFunction> SparseDtmcPrctlHelper<storm::RationalFunction>::computeRewardBoundedValues(
-    Environment const& env, storm::models::sparse::Dtmc<storm::RationalFunction> const& model,
-    std::shared_ptr<storm::logic::OperatorFormula const> rewardBoundedFormula) {
+    Environment const& /*env*/, storm::models::sparse::Dtmc<storm::RationalFunction> const& /*model*/,
+    std::shared_ptr<storm::logic::OperatorFormula const> /*rewardBoundedFormula*/) {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "The specified property is not supported by this value type.");
     return std::map<storm::storage::sparse::state_type, storm::RationalFunction>();
 }
@@ -379,6 +380,61 @@ std::vector<ValueType> SparseDtmcPrctlHelper<ValueType, RewardModelType>::comput
     return computeReachabilityRewards(env, std::move(goal), transitionMatrix, backwardTransitions, rewardModel, rew0States, qualitative, hint);
 }
 
+template<>
+std::vector<storm::RationalFunction> SparseDtmcPrctlHelper<storm::RationalFunction>::computeDiscountedCumulativeRewards(
+    Environment const& env, storm::solver::SolveGoal<storm::RationalFunction>&& goal,
+    storm::storage::SparseMatrix<storm::RationalFunction> const& transitionMatrix,
+    storm::models::sparse::StandardRewardModel<storm::RationalFunction> const& rewardModel, uint_fast64_t stepBound, storm::RationalFunction discountFactor) {
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "The specified property is not supported by this value type.");
+    return {};
+}
+
+template<typename ValueType, typename RewardModelType>
+std::vector<ValueType> SparseDtmcPrctlHelper<ValueType, RewardModelType>::computeDiscountedCumulativeRewards(
+    Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+    RewardModelType const& rewardModel, uint_fast64_t stepBound, ValueType discountFactor) {
+    // Only compute the result if the model has at least one reward this->getModel().
+    STORM_LOG_THROW(!rewardModel.empty(), storm::exceptions::InvalidPropertyException, "Missing reward model for formula. Skipping formula.");
+
+    // Compute the reward vector to add in each step based on the available reward models.
+    std::vector<ValueType> totalRewardVector = rewardModel.getTotalRewardVector(transitionMatrix);
+
+    // Initialize result to the zero vector.
+    std::vector<ValueType> result(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+
+    auto multiplier = storm::solver::MultiplierFactory<ValueType>().create(env, transitionMatrix);
+    multiplier->repeatedMultiplyAndReduce(env, goal.direction(), result, &totalRewardVector, stepBound);
+
+    return result;
+}
+
+template<>
+std::vector<storm::RationalFunction> SparseDtmcPrctlHelper<storm::RationalFunction>::computeDiscountedTotalRewards(
+    Environment const& env, storm::solver::SolveGoal<storm::RationalFunction>&& goal,
+    storm::storage::SparseMatrix<storm::RationalFunction> const& transitionMatrix,
+    storm::storage::SparseMatrix<storm::RationalFunction> const& backwardTransitions,
+    storm::models::sparse::StandardRewardModel<storm::RationalFunction> const& rewardModel, bool qualitative, storm::RationalFunction discountFactor,
+    ModelCheckerHint const& hint) {
+    STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "The specified property is not supported by this value type.");
+    return {};
+}
+
+template<typename ValueType, typename RewardModelType>
+std::vector<ValueType> SparseDtmcPrctlHelper<ValueType, RewardModelType>::computeDiscountedTotalRewards(
+    Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
+    storm::storage::SparseMatrix<ValueType> const& backwardTransitions, RewardModelType const& rewardModel, bool qualitative, ValueType discountFactor,
+    ModelCheckerHint const& hint) {
+    // Reduce to reachability rewards
+    std::vector<ValueType> b;
+
+    std::vector<ValueType> x = std::vector<ValueType>(transitionMatrix.getRowGroupCount(), storm::utility::zero<ValueType>());
+    b = rewardModel.getTotalRewardVector(transitionMatrix);
+    storm::modelchecker::helper::DiscountingHelper<ValueType, true> discountingHelper(transitionMatrix, discountFactor);
+    discountingHelper.setUpViOperator();
+    discountingHelper.solveWithDiscountedValueIteration(env, std::nullopt, x, b);
+    return std::vector<ValueType>(std::move(x));
+}
+
 template<typename ValueType, typename RewardModelType>
 std::vector<ValueType> SparseDtmcPrctlHelper<ValueType, RewardModelType>::computeReachabilityRewards(
     Environment const& env, storm::solver::SolveGoal<ValueType>&& goal, storm::storage::SparseMatrix<ValueType> const& transitionMatrix,
@@ -430,9 +486,9 @@ std::vector<ValueType> computeUpperRewardBounds(storm::storage::SparseMatrix<Val
 }
 
 template<>
-std::vector<storm::RationalFunction> computeUpperRewardBounds(storm::storage::SparseMatrix<storm::RationalFunction> const& transitionMatrix,
-                                                              std::vector<storm::RationalFunction> const& rewards,
-                                                              std::vector<storm::RationalFunction> const& oneStepTargetProbabilities) {
+std::vector<storm::RationalFunction> computeUpperRewardBounds(storm::storage::SparseMatrix<storm::RationalFunction> const& /*transitionMatrix*/,
+                                                              std::vector<storm::RationalFunction> const& /*rewards*/,
+                                                              std::vector<storm::RationalFunction> const& /*oneStepTargetProbabilities*/) {
     STORM_LOG_THROW(false, storm::exceptions::NotSupportedException, "Computing upper reward bounds is not supported for rational functions.");
 }
 
