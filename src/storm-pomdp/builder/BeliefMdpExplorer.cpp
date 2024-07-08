@@ -701,7 +701,6 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::finishExploration() {
 
     // Create the final model.
     exploredMdp = std::make_shared<storm::models::sparse::Mdp<ValueType>>(std::move(modelComponents));
-
     status = Status::ModelFinished;
     STORM_LOG_DEBUG("Explored Mdp with " << exploredMdp->getNumberOfStates() << " states (" << clippedStates.getNumberOfSetBits()
                                          << " of which were clipped and " << truncatedStates.getNumberOfSetBits() - clippedStates.getNumberOfSetBits()
@@ -1523,11 +1522,6 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::setDiscountedInformation(typ
                                                                              typename PomdpType::ValueType newPrecision) {
     discountFactor = newDiscountFactor;
     precision = newPrecision;
-}
-
-template<typename PomdpType, typename BeliefValueType>
-void BeliefMdpExplorer<PomdpType, BeliefValueType>::setBeliefLabeling(bool value) {
-    this->beliefLabeling = value;
 }
 
 template class BeliefMdpExplorer<storm::models::sparse::Pomdp<double>>;

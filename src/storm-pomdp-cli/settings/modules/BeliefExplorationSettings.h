@@ -79,6 +79,8 @@ class BeliefExplorationSettings : public ModuleSettings {
 
     // The name of the module.
     static const std::string moduleName;
+
+   private:
 };
 
 }  // namespace modules

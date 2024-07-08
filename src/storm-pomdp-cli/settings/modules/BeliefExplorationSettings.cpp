@@ -158,10 +158,8 @@ BeliefExplorationSettings::BeliefExplorationSettings() : ModuleSettings(moduleNa
     this->addOption(storm::settings::OptionBuilder(moduleName, revisedImplementationOption, false,
                                                    "If set, the revised implementation is used (which does not yet support all features).")
                         .build());
-
     this->addOption(
         storm::settings::OptionBuilder(moduleName, cutZeroGapOption, false, "Cut beliefs where the gap between over- and underapproximation is 0.").build());
-
     this->addOption(storm::settings::OptionBuilder(moduleName, stateEliminationCutoffOption, false,
                                                    "If this is set, an additional unfolding step for cut-off beliefs is performed.")
                         .build());
