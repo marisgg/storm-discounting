@@ -33,6 +33,7 @@ class POMDPSettings : public ModuleSettings {
     bool isSelfloopReductionSet() const;
     bool isCheckFullyObservableSet() const;
     bool isQualitativeAnalysisSet() const;
+    bool isBoundedToUnboundedReachabilityTransformationSet() const;
     uint64_t getMemoryBound() const;
 
     storm::storage::PomdpMemoryPattern getMemoryPattern() const;

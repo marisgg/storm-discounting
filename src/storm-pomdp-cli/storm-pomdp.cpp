@@ -410,14 +410,11 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
     }
 
     if (formula) {
-        if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula()) {
-            auto unfolder = storm::transformer::BoundUnfolder<ValueType>();
-            auto unfoldedStuff = unfolder.unfold(pomdp, *formula.get());
-            pomdp = unfoldedStuff.pomdp;
-            unfoldedStuff.formula->writeToStream(std::cout);
-            formula = unfoldedStuff.formula;
-            formula->writeToStream(std::cout);
-            std::cout << std::endl;
+        if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula() && pomdpSettings.isBoundedToUnboundedReachabilityTransformationSet()) {
+            storm::transformer::BoundUnfolder<ValueType> boundUnfolder;
+            auto unfoldingResult = boundUnfolder.unfold(pomdp, *formula.get());
+            pomdp = unfoldingResult.pomdp;
+            formula = unfoldingResult.formula;
         }
         auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);
         STORM_LOG_THROW(!formulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException,

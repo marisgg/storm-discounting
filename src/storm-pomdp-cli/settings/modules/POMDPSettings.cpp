@@ -25,6 +25,7 @@ const std::string memoryPatternOption = "memorypattern";
 std::vector<std::string> memoryPatterns = {"trivial", "fixedcounter", "selectivecounter", "ring", "fixedring", "settablebits", "full"};
 const std::string checkFullyObservableOption = "check-fully-observable";
 const std::string isQualitativeOption = "qualitative-analysis";
+const std::string isBoundedToUnboundedReachabilityTransformationOption = "unfold-reward-bound";
 
 POMDPSettings::POMDPSettings() : ModuleSettings(moduleName) {
     this->addOption(storm::settings::OptionBuilder(moduleName, noCanonicOption, false,
@@ -64,6 +65,10 @@ POMDPSettings::POMDPSettings() : ModuleSettings(moduleName) {
     this->addOption(
         storm::settings::OptionBuilder(moduleName, checkFullyObservableOption, false, "Performs standard model checking on the underlying MDP").build());
     this->addOption(storm::settings::OptionBuilder(moduleName, isQualitativeOption, false, "Sets the option qualitative analysis").build());
+    this->addOption(storm::settings::OptionBuilder(
+                        moduleName, isBoundedToUnboundedReachabilityTransformationOption, false,
+                        "Sets the option that reward bounded reachability properties are transformed to an unbounded problem on an unfolded POMDP.")
+                        .build());
 }
 
 bool POMDPSettings::isNoCanonicSet() const {
@@ -110,6 +115,10 @@ bool POMDPSettings::isCheckFullyObservableSet() const {
 
 bool POMDPSettings::isQualitativeAnalysisSet() const {
     return this->getOption(isQualitativeOption).getHasOptionBeenSet();
+}
+
+bool POMDPSettings::isBoundedToUnboundedReachabilityTransformationSet() const {
+    return this->getOption(isBoundedToUnboundedReachabilityTransformationOption).getHasOptionBeenSet();
 }
 
 uint64_t POMDPSettings::getMemoryBound() const {
