@@ -57,8 +57,6 @@ class BeliefManager {
 
     std::string toString(Triangulation const &t) const;
 
-    std::string toJsonListString(BeliefId const &beliefId, uint_fast64_t indentationLevel) const;
-
     ValueType getWeightedSum(BeliefId const &beliefId, std::vector<ValueType> const &summands);
 
     std::pair<bool, ValueType> getWeightedSum(BeliefId const &beliefId, std::unordered_map<StateType, ValueType> const &summands);

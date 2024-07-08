@@ -74,13 +74,6 @@ class BeliefExplorationSettings : public ModuleSettings {
 
     bool isStateEliminationCutoffSet() const;
 
-    /// Controls if belief MDP states are labeled with their belief
-    bool isBeliefLabelingSet() const;
-
-    /// Controls if beliefMdp should be exported in dot format
-    bool isExportBeliefMdpAsDotSet() const;
-    std::string getDotFileName() const;
-
     template<typename ValueType>
     void setValuesInOptionsStruct(storm::pomdp::modelchecker::BeliefExplorationPomdpModelCheckerOptions<ValueType>& options) const;
 

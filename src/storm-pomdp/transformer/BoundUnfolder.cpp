@@ -265,7 +265,7 @@ std::pair<std::unordered_map<std::string, ValueType>, std::unordered_map<std::st
         STORM_LOG_ASSERT(buFormula.getTimeBoundReference(i).hasRewardModelName(), "The reward model for bound reference " << i << " has no name.");
         std::string rewName = buFormula.getTimeBoundReference(i).getRewardModelName();
         if (buFormula.hasUpperBound(i)) {
-            STORM_LOG_ASSERT(buFormula.hasIntegerUpperBound(i), "Bound " << i << " is not integer");  // TODO maybe make this just a warn?
+            STORM_LOG_ASSERT(buFormula.hasIntegerUpperBound(i), "Bound " << i << " is not integer");
             ValueType ub;
             if (buFormula.isUpperBoundStrict(i)) {
                 // Convert strict to non-strict
@@ -280,7 +280,7 @@ std::pair<std::unordered_map<std::string, ValueType>, std::unordered_map<std::st
             }
         }
         if (buFormula.hasLowerBound(i)) {
-            STORM_LOG_ASSERT(buFormula.hasIntegerLowerBound(i), "Bound " << i << " is not integer");  // TODO maybe make this just a warn?
+            STORM_LOG_ASSERT(buFormula.hasIntegerLowerBound(i), "Bound " << i << " is not integer");
             ValueType lb;
             if (buFormula.isLowerBoundStrict(i)) {
                 // Convert strict to non-strict

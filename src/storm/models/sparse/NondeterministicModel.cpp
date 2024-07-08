@@ -79,7 +79,7 @@ void NondeterministicModel<ValueType, RewardModelType>::writeDotToStream(std::os
                                                                          std::vector<ValueType> const* secondValue,
                                                                          std::vector<uint_fast64_t> const* stateColoring,
                                                                          std::vector<std::string> const* colors, std::vector<uint_fast64_t>* scheduler,
-                                                                         bool finalizeOutput, bool shortenProbabilities) const {
+                                                                         bool finalizeOutput) const {
     Model<ValueType, RewardModelType>::writeDotToStream(outStream, maxWidthLabel, includeLabeling, subsystem, firstValue, secondValue, stateColoring, colors,
                                                         scheduler, false);
 
@@ -161,32 +161,7 @@ void NondeterministicModel<ValueType, RewardModelType>::writeDotToStream(std::os
             // Now draw all probabilistic arcs that belong to this non-deterministic choice.
             for (auto const& transition : row) {
                 if (subsystem == nullptr || subsystem->get(transition.getColumn())) {
-                    if (shortenProbabilities){
-                        auto prob = storm::utility::convertNumber<double>(transition.getValue());
-                        std::stringstream nmbr;
-                        nmbr << std::setprecision(std::numeric_limits<double>::max_digits10) << prob;
-                        std::string probString = nmbr.str();
-
-                        std::stringstream shortened;
-                        shortened << std::setprecision(3) << prob;
-                        std::string shortenedProbString = shortened.str();
-                        double shortenedProb = std::stod(shortenedProbString);
-                        std::stringstream shortenedProbInHighPrecision;
-                        shortenedProbInHighPrecision << std::setprecision(std::numeric_limits<double>::max_digits10) << shortenedProb;
-                        std::string shortenedProbHighPrecString = shortenedProbInHighPrecision.str();
-                        bool wasRounded = 0 != probString.compare(shortenedProbHighPrecString);
-
-                        if (wasRounded) {
-                            outStream << "\t\"" << state << "c" << choice << "\" -> " << transition.getColumn()
-                                      << " [ label= \"~" << std::setprecision(3) << prob << "\" ]";
-                        } else {
-                            outStream << "\t\"" << state << "c" << choice << "\" -> " << transition.getColumn()
-                                      << " [ label= \"" << std::setprecision(3) << prob << "\" ]";
-                        }
-                    } else {
-                        outStream << "\t\"" << state << "c" << choice << "\" -> " << transition.getColumn()
-                                  << " [ label= \"" << transition.getValue() << "\" ]";
-                    }
+                    outStream << "\t\"" << state << "c" << choice << "\" -> " << transition.getColumn() << " [ label= \"" << transition.getValue() << "\" ]";
 
                     // If we were given a scheduler to highlight, we do so now.
                     if (scheduler != nullptr) {

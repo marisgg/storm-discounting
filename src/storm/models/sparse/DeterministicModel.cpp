@@ -28,7 +28,7 @@ void DeterministicModel<ValueType, RewardModelType>::writeDotToStream(std::ostre
                                                                       storm::storage::BitVector const* subsystem, std::vector<ValueType> const* firstValue,
                                                                       std::vector<ValueType> const* secondValue,
                                                                       std::vector<uint_fast64_t> const* stateColoring, std::vector<std::string> const* colors,
-                                                                      std::vector<uint_fast64_t>* scheduler, bool finalizeOutput, bool shortenProbabilities) const {
+                                                                      std::vector<uint_fast64_t>* scheduler, bool finalizeOutput) const {
     Model<ValueType, RewardModelType>::writeDotToStream(outStream, maxWidthLabel, includeLabeling, subsystem, firstValue, secondValue, stateColoring, colors,
                                                         scheduler, false);
 

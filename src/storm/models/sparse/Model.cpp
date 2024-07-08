@@ -455,7 +455,7 @@ template<typename ValueType, typename RewardModelType>
 void Model<ValueType, RewardModelType>::writeDotToStream(std::ostream& outStream, size_t maxWidthLabel, bool includeLabeling,
                                                          storm::storage::BitVector const* subsystem, std::vector<ValueType> const* firstValue,
                                                          std::vector<ValueType> const* secondValue, std::vector<uint_fast64_t> const* stateColoring,
-                                                         std::vector<std::string> const* colors, std::vector<uint_fast64_t>*, bool finalizeOutput, bool shortenProbabilities) const {
+                                                         std::vector<std::string> const* colors, std::vector<uint_fast64_t>*, bool finalizeOutput) const {
     outStream << "digraph model {\n";
 
     // Write all states to the stream.

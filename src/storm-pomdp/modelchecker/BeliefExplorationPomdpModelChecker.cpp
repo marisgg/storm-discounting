@@ -392,11 +392,6 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             overApproxBeliefManager->setRewardModel(rewardModelName);
         }
         overApproximation = std::make_shared<ExplorerType>(overApproxBeliefManager, trivialPOMDPBounds, storm::builder::ExplorationHeuristic::BreadthFirst);
-        overApproximation->setBeliefLabeling(options.beliefLabeling);
-        overApproximation->setExportDot(options.exportBeliefMdpAsDot);
-        if (options.exportBeliefMdpAsDot) {
-            overApproximation->setExportDotFileName(options.dotOutputFileName.value());
-        }
         overApproxHeuristicPar.gapThreshold = options.gapThresholdInit;
         overApproxHeuristicPar.observationThreshold = options.obsThresholdInit;
         overApproxHeuristicPar.sizeThreshold = options.sizeThresholdInit == 0 ? std::numeric_limits<uint64_t>::max() : options.sizeThresholdInit;
@@ -435,11 +430,6 @@ void BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
             underApproxBeliefManager->setRewardModel(rewardModelName);
         }
         underApproximation = std::make_shared<ExplorerType>(underApproxBeliefManager, trivialPOMDPBounds, options.explorationHeuristic);
-        underApproximation->setBeliefLabeling(options.beliefLabeling);
-        underApproximation->setExportDot(options.exportBeliefMdpAsDot);
-        if (options.exportBeliefMdpAsDot) {
-            underApproximation->setExportDotFileName(options.dotOutputFileName.value());
-        }
         underApproxHeuristicPar.gapThreshold = options.gapThresholdInit;
         underApproxHeuristicPar.optimalChoiceValueEpsilon = options.optimalChoiceValueThresholdInit;
         underApproxHeuristicPar.sizeThreshold = options.sizeThresholdInit;
@@ -1242,8 +1232,8 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         }
         if (printUpdateStopwatch.getTimeInSeconds() >= 60) {
             printUpdateStopwatch.restart();
-            STORM_PRINT_AND_LOG("### " << underApproximation->getCurrentNumberOfMdpStates() << " beliefs in underapproximation MDP"
-                                       << " ##### " << underApproximation->getUnexploredStates().size() << " beliefs queued\n");
+            STORM_PRINT_AND_LOG("### " << underApproximation->getCurrentNumberOfMdpStates() << " beliefs in underapproximation MDP" << " ##### "
+                                       << underApproximation->getUnexploredStates().size() << " beliefs queued\n");
             if (underApproximation->getCurrentNumberOfMdpStates() > heuristicParameters.sizeThreshold && options.useClipping) {
                 STORM_PRINT_AND_LOG("##### Clipping Attempts: " << statistics.nrClippingAttempts.value() << " ##### "
                                                                 << "Clipped States: " << statistics.nrClippedStates.value() << "\n");

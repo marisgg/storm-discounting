@@ -16,7 +16,6 @@
 #include "storm/utility/graph.h"
 #include "storm/utility/macros.h"
 #include "storm/utility/vector.h"
-#include "api/export.h"
 
 namespace storm {
 namespace builder {
@@ -702,15 +701,6 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::finishExploration() {
 
     // Create the final model.
     exploredMdp = std::make_shared<storm::models::sparse::Mdp<ValueType>>(std::move(modelComponents));
-
-    // Optional Dot Output
-    if (exportDot) {
-        STORM_LOG_ASSERT(exportDotFileName, "No file name for dot export given.");
-        exportBeliefMdpToDot(exportDotFileName.value() + ".dot", true);
-        if (beliefLabeling) {
-            exportBeliefsAsJson(exportDotFileName.value() + ".json");
-        }
-    }
 
     status = Status::ModelFinished;
     STORM_LOG_DEBUG("Explored Mdp with " << exploredMdp->getNumberOfStates() << " states (" << clippedStates.getNumberOfSetBits()
@@ -1538,51 +1528,6 @@ void BeliefMdpExplorer<PomdpType, BeliefValueType>::setDiscountedInformation(typ
 template<typename PomdpType, typename BeliefValueType>
 void BeliefMdpExplorer<PomdpType, BeliefValueType>::setBeliefLabeling(bool value) {
     this->beliefLabeling = value;
-}
-
-template<typename PomdpType, typename BeliefValueType>
-void BeliefMdpExplorer<PomdpType, BeliefValueType>::setExportDot(bool value) {
-    exportDot = value;
-}
-
-template<typename PomdpType, typename BeliefValueType>
-void BeliefMdpExplorer<PomdpType, BeliefValueType>::setExportDotFileName(std::string fileName) {
-    exportDotFileName = fileName;
-}
-
-template<typename PomdpType, typename BeliefValueType>
-void BeliefMdpExplorer<PomdpType, BeliefValueType>::writeBeliefJsonStringToStream(std::ostream& str) {
-    str << "{\n";
-    bool first = true;
-    for (auto state = 0; state < getCurrentNumberOfMdpStates(); state++) {
-        auto beliefID = mdpStateToBeliefIdMap[state];
-        if (beliefID != beliefManager->noId()) {
-            if (first) {
-                first = false;
-            }
-            else {
-                str << ",\n";
-            }
-            str << "\t\"state_" << state << "\": [\n" << beliefManager->toJsonListString(beliefID, 2) << "\n\t]";
-        }
-    }
-    str << "\n}";
-}
-
-template<typename PomdpType, typename BeliefValueType>
-void BeliefMdpExplorer<PomdpType, BeliefValueType>::exportBeliefsAsJson(std::string const& fileName) {
-    std::ofstream stream;
-    storm::utility::openFile(fileName, stream);
-    writeBeliefJsonStringToStream(stream);
-    storm::utility::closeFile(stream);
-}
-
-template<typename PomdpType, typename BeliefValueType>
-void BeliefMdpExplorer<PomdpType, BeliefValueType>::exportBeliefMdpToDot(std::string const& fileName, bool shorten) {
-    std::ofstream stream;
-    storm::utility::openFile(fileName, stream);
-    exploredMdp->writeDotToStream(stream, 30, true, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, true, shorten);
-    storm::utility::closeFile(stream);
 }
 
 template class BeliefMdpExplorer<storm::models::sparse::Pomdp<double>>;

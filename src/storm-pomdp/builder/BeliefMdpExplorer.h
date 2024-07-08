@@ -272,12 +272,6 @@ class BeliefMdpExplorer {
 
     void setDiscountedInformation(ValueType newDiscountFactor, ValueType newPrecision);
 
-    void setBeliefLabeling(bool value);
-
-    void setExportDot(bool value);
-
-    void setExportDotFileName(std::string fileName);
-
    private:
     MdpStateType noState() const;
 
@@ -296,17 +290,6 @@ class BeliefMdpExplorer {
     void insertValueHints(ValueType const &lowerBound, ValueType const &upperBound);
 
     MdpStateType getOrAddMdpState(BeliefId const &beliefId, ValueType const &transitionValue = storm::utility::zero<ValueType>());
-
-    void writeBeliefJsonStringToStream(std::ostream& str);
-
-    void exportBeliefsAsJson(std::string const& fileName);
-
-    void exportBeliefMdpToDot(std::string const& fileName, bool shorten);
-
-    // Options
-    bool beliefLabeling = false;
-    bool exportDot = false;
-    std::optional<std::string> exportDotFileName;
 
     // Belief state related information
     std::shared_ptr<BeliefManagerType> beliefManager;

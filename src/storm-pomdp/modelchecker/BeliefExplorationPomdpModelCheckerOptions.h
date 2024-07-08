@@ -60,11 +60,6 @@ struct BeliefExplorationPomdpModelCheckerOptions {
     storm::builder::ExplorationHeuristic explorationHeuristic = storm::builder::ExplorationHeuristic::BreadthFirst;
 
     bool recomputeInitialValueWithoutDiscounting = false;
-
-    bool beliefLabeling = false;
-    bool exportBeliefMdpAsDot = false;
-
-    std::optional<std::string> dotOutputFileName;
 };
 }  // namespace modelchecker
 }  // namespace pomdp
