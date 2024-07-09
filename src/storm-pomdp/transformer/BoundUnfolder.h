@@ -3,22 +3,29 @@
 #include <logic/TimeBoundType.h>
 
 #include <utility>
+#include "logic/ProbabilityOperatorFormula.h"
 #include "logic/QuantileFormula.h"
 #include "models/sparse/Pomdp.h"
-#include "logic/ProbabilityOperatorFormula.h"
 
-namespace storm {
-namespace transformer {
+namespace storm::transformer {
 template<typename ValueType>
 class BoundUnfolder {
    public:
     struct UnfoldingResult {
         std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp;
         std::shared_ptr<storm::logic::Formula> formula;
-        std::map<std::pair<uint_fast64_t, std::map<std::string, ValueType>>, uint_fast64_t> stateEpochsToNewState;
-        std::map<uint_fast64_t, std::pair<uint_fast64_t, std::map<std::string, ValueType>>> newStateToStateEpochs;
-        UnfoldingResult(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, std::shared_ptr<storm::logic::Formula> formula, std::map<std::pair<uint_fast64_t, std::map<std::string, ValueType>>, uint_fast64_t> stateEpochsToNewState, std::map<uint_fast64_t, std::pair<uint_fast64_t, std::map<std::string, ValueType>>> newStateToStateEpochs)
-            : pomdp(pomdp), formula(std::move(formula)), stateEpochsToNewState(stateEpochsToNewState), newStateToStateEpochs(newStateToStateEpochs){}
+        std::vector<std::unordered_map<std::string, ValueType>> idToEpochMap;
+        std::unordered_map<uint64_t, std::unordered_map<uint64_t, uint64_t>> stateEpochToNewState;
+        std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> newStateToStateEpoch;
+        UnfoldingResult(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, std::shared_ptr<storm::logic::Formula> formula,
+                        std::vector<std::unordered_map<std::string, ValueType>> idToEpochMap,
+                        std::unordered_map<uint64_t, std::unordered_map<uint64_t, uint64_t>> stateEpochsToNewState,
+                        std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> newStateToStateEpochs)
+            : pomdp(pomdp),
+              formula(std::move(formula)),
+              idToEpochMap(std::move(idToEpochMap)),
+              stateEpochToNewState(std::move(stateEpochsToNewState)),
+              newStateToStateEpoch(std::move(newStateToStateEpochs)) {}
     };
 
     BoundUnfolder() = default;
@@ -38,5 +45,4 @@ class BoundUnfolder {
     std::pair<std::unordered_map<std::string, ValueType>, std::unordered_map<std::string, ValueType>> getBounds(const storm::logic::Formula& formula);
 };
 
-}  // namespace transformer
-}  // namespace storm
+}  // namespace storm::transformer
