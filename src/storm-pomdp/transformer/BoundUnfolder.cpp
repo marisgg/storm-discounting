@@ -10,7 +10,7 @@
 #include "storm/exceptions/NotSupportedException.h"
 #include "storm/logic/BoundedUntilFormula.h"
 
-namespace storm::transformer {
+namespace storm::pomdp::transformer {
 template<typename ValueType>
 typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unfold(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp,
                                                                                     storm::logic::Formula const& formula, bool rewardAware) {
@@ -188,7 +188,7 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
     }
 
     // State labeling: single label for target
-    auto stateLabeling = storm::models::sparse::StateLabeling(stateEpochToNewState.size() + 2);
+    auto stateLabeling = storm::models::sparse::StateLabeling(newStateToStateEpoch.size() + 2);
     auto labeling = storm::storage::BitVector(nextNewStateIndex, false);
     labeling.set(0);
     stateLabeling.addLabel("goal", labeling);
@@ -318,4 +318,4 @@ std::pair<std::unordered_map<std::string, ValueType>, std::unordered_map<std::st
 
 template class BoundUnfolder<double>;
 template class BoundUnfolder<storm::RationalNumber>;
-}  // namespace storm::transformer
+}  // namespace storm::pomdp::transformer

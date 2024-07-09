@@ -7,7 +7,7 @@
 #include "logic/QuantileFormula.h"
 #include "models/sparse/Pomdp.h"
 
-namespace storm::transformer {
+namespace storm::pomdp::transformer {
 template<typename ValueType>
 class BoundUnfolder {
    public:
@@ -45,4 +45,4 @@ class BoundUnfolder {
     std::pair<std::unordered_map<std::string, ValueType>, std::unordered_map<std::string, ValueType>> getBounds(const storm::logic::Formula& formula);
 };
 
-}  // namespace storm::transformer
+}  // namespace storm::pomdp::transformer
