@@ -12,8 +12,8 @@
 
 namespace storm::transformer {
 template<typename ValueType>
-typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unfold(
-    std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, const storm::logic::Formula& formula) {
+typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unfold(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp,
+                                                                                    storm::logic::Formula const& formula, bool rewardAware) {
     STORM_LOG_ASSERT(originalPomdp->getInitialStates().getNumberOfSetBits() == 1, "Original POMDP has more than one initial state");
 
     // Check formula
@@ -172,10 +172,19 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
     }
 
     // Observations
-    observations.push_back(originalPomdp->getNrObservations());      // target
-    observations.push_back(originalPomdp->getNrObservations() + 1);  // sink
-    for (uint64_t i = 2ul; i < nextNewStateIndex; i++) {
-        observations.push_back(originalPomdp->getObservation(newStateToStateEpoch[i].first));
+    if (!rewardAware) {
+        observations.push_back(originalPomdp->getNrObservations());      // target
+        observations.push_back(originalPomdp->getNrObservations() + 1);  // sink
+        for (uint64_t i = 2ul; i < nextNewStateIndex; i++) {
+            observations.push_back(originalPomdp->getObservation(newStateToStateEpoch[i].first));
+        }
+    } else {
+        observations.push_back(originalPomdp->getNrObservations() * idToEpochMap.size());      // target
+        observations.push_back(originalPomdp->getNrObservations() * idToEpochMap.size() + 1);  // sink
+        for (uint64_t i = 2ul; i < nextNewStateIndex; i++) {
+            observations.push_back(originalPomdp->getNrObservations() * newStateToStateEpoch.at(i).second +
+                                   originalPomdp->getObservation(newStateToStateEpoch.at(i).first));
+        }
     }
 
     // State labeling: single label for target

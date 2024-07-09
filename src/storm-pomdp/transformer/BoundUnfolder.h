@@ -36,8 +36,8 @@ class BoundUnfolder {
      * @param formula The formula for which we unfold
      * @return Result struct containing the new pomdp, the new formula and mappings between (state, epoch) pairs and states in the new pomdp
      */
-    UnfoldingResult unfold(
-        std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, const storm::logic::Formula& formula);
+    UnfoldingResult unfold(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, const storm::logic::Formula& formula,
+                           bool rewardAware = false);
 
    private:
     ValueType getUpperBound(const storm::logic::BoundedUntilFormula& formula, uint64_t i);
