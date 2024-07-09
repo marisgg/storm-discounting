@@ -13,6 +13,7 @@
 #include "storm/api/verification.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/models/sparse/Pomdp.h"
+#include "storm/transformer/TransitionToActionRewardTransformer.h"
 #include "storm/utility/OptionalRef.h"
 #include "storm/utility/Stopwatch.h"
 #include "storm/utility/constants.h"
@@ -276,8 +277,17 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
     // Finally, perform model checking on the belief MDP.
     storm::utility::Stopwatch swCheck(true);
     auto formula = createFormulaForBeliefMdp(propertyInformation);
+    std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> processedMdp = beliefMdp;
+    if (propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
+        std::vector<std::string> rewardModelNames;
+        for (auto const& bnd : propertyInformation.rewardBounds) {
+            rewardModelNames.push_back(bnd.rewardModelName);
+        }
+        processedMdp = storm::transformer::transformTransitionToActionRewards<BeliefMdpValueType>(beliefMdp, rewardModelNames)
+                           .model->template as<storm::models::sparse::Mdp<BeliefMdpValueType>>();
+    }
     storm::modelchecker::CheckTask<storm::logic::Formula, BeliefMdpValueType> task(*formula, true);
-    std::unique_ptr<storm::modelchecker::CheckResult> res(storm::api::verifyWithSparseEngine<BeliefMdpValueType>(env, beliefMdp, task));
+    std::unique_ptr<storm::modelchecker::CheckResult> res(storm::api::verifyWithSparseEngine<BeliefMdpValueType>(env, processedMdp, task));
     swCheck.stop();
     STORM_PRINT_AND_LOG("Time for exploring beliefs: " << swExplore << ".\n");
     STORM_PRINT_AND_LOG("Time for building the belief MDP: " << swBuild << ".\n");
