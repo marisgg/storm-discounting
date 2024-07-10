@@ -69,19 +69,18 @@ template<typename BeliefMdpValueType, typename BeliefType, typename... ExtraTran
 std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdpWithImplicitCutoffs(
     ExplorationInformation<BeliefMdpValueType, BeliefType, ExtraTransitionData...> const& explorationInformation,
     PropertyInformation const& propertyInformation, std::function<BeliefMdpValueType(BeliefType const&)> computeCutOffValue) {
-    STORM_LOG_ASSERT(propertyInformation.kind == PropertyInformation::Kind::ReachabilityProbability ||
-                         propertyInformation.kind == PropertyInformation::Kind::ExpectedTotalReachabilityReward ||
-                         propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability,
-                     "Unexpected kind of property.");
-    bool const reachabilityProbability = propertyInformation.kind == PropertyInformation::Kind::ReachabilityProbability ||
-                                         propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability;
-    uint64_t const numExtraStates = reachabilityProbability ? 2ull : 1ull;
+    bool const isReachProb = propertyInformation.kind == PropertyInformation::Kind::ReachabilityProbability;
+    bool const isTotRew = propertyInformation.kind == PropertyInformation::Kind::ExpectedTotalReachabilityReward;
+    STORM_LOG_ASSERT(isReachProb || isTotRew, "Unexpected kind of property.");
+
+    // (unbounded) reachability probabilities get a dedicated target state as an extra state
+    uint64_t const numExtraStates = isReachProb ? 2ull : 1ull;
     uint64_t const numStates = explorationInformation.matrix.groups() + numExtraStates;
     uint64_t const numChoices = explorationInformation.matrix.rows() + numExtraStates;
     uint64_t const targetState = numStates - numExtraStates;
     uint64_t const bottomState = numStates - 1;
     std::vector<BeliefMdpValueType> actionRewards;
-    if (!reachabilityProbability) {
+    if (isTotRew) {
         actionRewards.reserve(numChoices);
         actionRewards.insert(actionRewards.end(), explorationInformation.actionRewards.begin(), explorationInformation.actionRewards.end());
         actionRewards.push_back(storm::utility::zero<BeliefMdpValueType>());
@@ -112,7 +111,7 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdpWi
                         BeliefType const& successorBelief = explorationInformation.discoveredBeliefs.getBeliefFromId(entry.targetBelief);
                         successorValue = entry.probability * computeCutOffValue(successorBelief);  // Cut-off value
                     }
-                    if (reachabilityProbability) {
+                    if (isReachProb) {
                         probabilityToTarget += successorValue;
                         probabilityToBottom += entry.probability - successorValue;
                     } else {
@@ -121,7 +120,7 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdpWi
                     }
                 }
             }
-            if (reachabilityProbability && !storm::utility::isZero(probabilityToTarget)) {
+            if (isReachProb && !storm::utility::isZero(probabilityToTarget)) {
                 transitionBuilder.addNextValue(choice, targetState, probabilityToTarget);
             }
             if (!storm::utility::isZero(probabilityToBottom)) {
@@ -129,7 +128,7 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdpWi
             }
         }
     }
-    if (reachabilityProbability) {
+    if (isReachProb) {
         transitionBuilder.newRowGroup(numChoices - 2);
         transitionBuilder.addNextValue(numChoices - 2, targetState, storm::utility::one<BeliefMdpValueType>());
     }
@@ -142,13 +141,13 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdpWi
     stateLabeling.addLabel("init");
     stateLabeling.addLabelToState("init", explorationInformation.exploredBeliefs.at(explorationInformation.initialBeliefId));
 
-    if (reachabilityProbability) {
+    if (isReachProb) {
         stateLabeling.addLabel("target");
         stateLabeling.addLabelToState("target", targetState);
     }
     storm::storage::sparse::ModelComponents<BeliefMdpValueType> components(transitionBuilder.build(), std::move(stateLabeling));
 
-    if (!reachabilityProbability) {
+    if (isTotRew) {
         storm::models::sparse::StandardRewardModel<BeliefMdpValueType> rewardModel(std::nullopt, std::move(actionRewards));
         components.rewardModels.emplace(propertyInformation.rewardModelName.value(), std::move(rewardModel));
     }
@@ -161,15 +160,13 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
     ExplorationInformation<BeliefMdpValueType, BeliefType, ExtraTransitionData...> const& explorationInformation,
     PropertyInformation const& propertyInformation,
     std::function<std::unordered_map<std::string, BeliefMdpValueType>(BeliefType const&)> computeCutOffValueMap) {
-    STORM_LOG_ASSERT(propertyInformation.kind == PropertyInformation::Kind::ReachabilityProbability ||
-                         propertyInformation.kind == PropertyInformation::Kind::ExpectedTotalReachabilityReward ||
-                         propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability,
-                     "Unexpected kind of property.");
+    bool const isReachProb = propertyInformation.kind == PropertyInformation::Kind::ReachabilityProbability;
+    bool const isTotRew = propertyInformation.kind == PropertyInformation::Kind::ExpectedTotalReachabilityReward;
+    bool const isRewBndReachProb = propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability;
+    STORM_LOG_ASSERT(isReachProb || isTotRew || isRewBndReachProb, "Unexpected kind of property.");
 
     bool constexpr extraDataCompatibleWithRewardAwareness =
         sizeof...(ExtraTransitionData) == 1 && (std::is_same_v<std::vector<BeliefMdpValueType>, ExtraTransitionData> || ...);
-    bool const reachabilityProbability = propertyInformation.kind == PropertyInformation::Kind::ReachabilityProbability ||
-                                         propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability;
 
     // First gather all cut-off information
     uint64_t nrCutOffChoices = 0ull;
@@ -180,15 +177,17 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
         nrCutOffChoices += cutOffInformationMap[frontierBeliefId].size();
     }
 
-    uint64_t const numBottomTargetStates = reachabilityProbability ? 2ull : 1ull;
+    // (unbounded) reachability probabilities get a dedicated target state as an extra state
+    // This is not done for reward-bounded reachability probabilities because target states are not terminal for those (e.g. because of lower reward bounds)
+    uint64_t const numBottomTargetStates = isReachProb ? 2ull : 1ull;
     uint64_t const numExtraStates = numBottomTargetStates + explorationInformation.getFrontierBeliefs().size();
     uint64_t const numStates = explorationInformation.matrix.groups() + numExtraStates;
     uint64_t const numChoices = explorationInformation.matrix.rows() + numBottomTargetStates + nrCutOffChoices;
-    uint64_t const targetState = numStates - (reachabilityProbability ? 2ull : 1ull);
+    uint64_t const targetState = numStates - (isReachProb ? 2ull : 1ull);
     uint64_t const bottomState = numStates - 1;
 
     std::vector<BeliefMdpValueType> actionRewards;
-    if (!reachabilityProbability) {
+    if (isTotRew) {
         actionRewards.reserve(numChoices);
         actionRewards.insert(actionRewards.end(), explorationInformation.actionRewards.begin(), explorationInformation.actionRewards.end());
         // Insert 0 for all cut-off choices and bottom state
@@ -204,10 +203,9 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
     std::vector<storm::storage::SparseMatrixBuilder<BeliefMdpValueType>> transitionRewardBuilderVector;
 
     if constexpr (extraDataCompatibleWithRewardAwareness) {
-        if (propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
+        if (isRewBndReachProb) {
             for (uint64_t i = 0; i < propertyInformation.rewardBounds.size(); ++i) {
-                transitionRewardBuilderVector.push_back(
-                    storm::storage::SparseMatrixBuilder<BeliefMdpValueType>(numChoices, numStates, 0, true, true, numStates));
+                transitionRewardBuilderVector.emplace_back(numChoices, numStates, 0, true, true, numStates);
             }
         }
     }
@@ -230,9 +228,11 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
                     // Transition to explored belief
                     transitionBuilder.addNextValue(choice, explIt->second, entry.probability);
                     if constexpr (extraDataCompatibleWithRewardAwareness) {
-                        if (propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
+                        if (isRewBndReachProb) {
                             for (uint64_t i = 0; i < propertyInformation.rewardBounds.size(); ++i) {
-                                transitionRewardBuilderVector.at(i).addNextValue(choice, explIt->second, entry.data[i]);
+                                if (!storm::utility::isZero(entry.data[i])) {
+                                    transitionRewardBuilderVector.at(i).addNextValue(choice, explIt->second, entry.data[i]);
+                                }
                             }
                         }
                     }
@@ -242,7 +242,7 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
                     if (auto terminalIt = explorationInformation.terminalBeliefValues.find(entry.targetBelief);
                         terminalIt != explorationInformation.terminalBeliefValues.end()) {
                         successorValue = entry.probability * terminalIt->second;  // terminal value determined during exploration
-                        if (reachabilityProbability) {
+                        if (isReachProb) {
                             probabilityToTarget += successorValue;
                             probabilityToBottom += entry.probability - successorValue;
                         } else {
@@ -260,7 +260,7 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
                     }
                 }
             }
-            if (reachabilityProbability && !storm::utility::isZero(probabilityToTarget)) {
+            if (isReachProb && !storm::utility::isZero(probabilityToTarget)) {
                 transitionBuilder.addNextValue(choice, targetState, probabilityToTarget);
             }
             if (!storm::utility::isZero(probabilityToBottom)) {
@@ -277,7 +277,7 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
         }
         std::unordered_map<std::string, BeliefMdpValueType> cutOffInformationForBelief = cutOffInformationMap.at(stateToFrontierBeliefMap.at(state));
         for (auto const& entry : cutOffInformationForBelief) {
-            if (reachabilityProbability) {
+            if (isReachProb) {
                 transitionBuilder.addNextValue(choice, targetState, entry.second);
                 transitionBuilder.addNextValue(choice, bottomState, storm::utility::one<BeliefMdpValueType>() - entry.second);
             } else {
@@ -290,11 +290,8 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
     }
 
     // Treat extra states
-    if (reachabilityProbability) {
+    if (isReachProb) {
         transitionBuilder.newRowGroup(numChoices - 2);
-        for (auto& transitionRewardBuilder : transitionRewardBuilderVector) {
-            transitionRewardBuilder.newRowGroup(numChoices - 2);
-        }
         transitionBuilder.addNextValue(numChoices - 2, targetState, storm::utility::one<BeliefMdpValueType>());
     }
     transitionBuilder.newRowGroup(numChoices - 1);
@@ -309,33 +306,30 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
     stateLabeling.addLabel("init");
     stateLabeling.addLabelToState("init", explorationInformation.exploredBeliefs.at(explorationInformation.initialBeliefId));
 
-    if (reachabilityProbability) {
+    if (isReachProb) {
         stateLabeling.addLabel("target");
         stateLabeling.addLabelToState("target", targetState);
-    }
-    if (propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
-        stateLabeling.addLabel("targetObservation");
+    } else if (isRewBndReachProb) {
+        stateLabeling.addLabel("target");
         for (auto const& [belId, state] : explorationInformation.exploredBeliefs) {
             if (propertyInformation.targetObservations.count(explorationInformation.discoveredBeliefs.getBeliefFromId(belId).observation() %
                                                              explorationInformation.nrObservationsInPomdp) > 0) {
-                stateLabeling.addLabelToState("targetObservation", state);
+                stateLabeling.addLabelToState("target", state);
             }
         }
         for (auto const& belId : explorationInformation.getFrontierBeliefs()) {
             if (propertyInformation.targetObservations.count(explorationInformation.discoveredBeliefs.getBeliefFromId(belId).observation() %
                                                              explorationInformation.nrObservationsInPomdp) > 0) {
-                stateLabeling.addLabelToState("targetObservation", frontierBeliefToStateMap.at(belId));
+                stateLabeling.addLabelToState("target", frontierBeliefToStateMap.at(belId));
             }
         }
     }
     storm::storage::sparse::ModelComponents<BeliefMdpValueType> components(transitionBuilder.build(), std::move(stateLabeling));
 
-    if (!reachabilityProbability) {
+    if (isTotRew) {
         storm::models::sparse::StandardRewardModel<BeliefMdpValueType> rewardModel(std::nullopt, std::move(actionRewards));
         components.rewardModels.emplace(propertyInformation.rewardModelName.value(), std::move(rewardModel));
-    }
-
-    if (propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
+    } else if (isRewBndReachProb) {
         uint64_t i = 0ul;
         for (auto& transitionRewardBuilder : transitionRewardBuilderVector) {
             storm::models::sparse::StandardRewardModel<BeliefMdpValueType> rewardModel(std::nullopt, std::nullopt, transitionRewardBuilder.build());
