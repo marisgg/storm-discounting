@@ -294,8 +294,8 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
     STORM_PRINT_AND_LOG("Time for analyzing the belief MDP: " << swCheck << ".\n");
     STORM_LOG_ASSERT(res, "Model checking of belief MDP did not return any result.");
     STORM_LOG_ASSERT(res->isExplicitQuantitativeCheckResult(), "Model checking of belief MDP did not return result of expected type.");
-    STORM_LOG_ASSERT(beliefMdp->getInitialStates().getNumberOfSetBits() == 1, "Unexpected number of initial states for belief Mdp.");
-    auto const initState = beliefMdp->getInitialStates().getNextSetIndex(0);
+    STORM_LOG_ASSERT(processedMdp->getInitialStates().getNumberOfSetBits() == 1, "Unexpected number of initial states for (processed) belief Mdp.");
+    auto const initState = processedMdp->getInitialStates().getNextSetIndex(0);
     return {res->asExplicitQuantitativeCheckResult<BeliefMdpValueType>()[initState], !earlyExplorationStop};
 }
 
