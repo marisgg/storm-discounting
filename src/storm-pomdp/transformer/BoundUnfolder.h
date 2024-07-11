@@ -14,11 +14,11 @@ class BoundUnfolder {
     struct UnfoldingResult {
         std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp;
         std::shared_ptr<storm::logic::Formula> formula;
-        std::vector<std::unordered_map<std::string, ValueType>> idToEpochMap;
+        std::vector<std::vector<uint64_t>> idToEpochMap;
         std::unordered_map<uint64_t, std::unordered_map<uint64_t, uint64_t>> stateEpochToNewState;
         std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> newStateToStateEpoch;
         UnfoldingResult(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp, std::shared_ptr<storm::logic::Formula> formula,
-                        std::vector<std::unordered_map<std::string, ValueType>> idToEpochMap,
+                        std::vector<std::vector<uint64_t>> idToEpochMap,
                         std::unordered_map<uint64_t, std::unordered_map<uint64_t, uint64_t>> stateEpochsToNewState,
                         std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> newStateToStateEpochs)
             : pomdp(pomdp),
@@ -40,9 +40,7 @@ class BoundUnfolder {
                            bool rewardAware = false);
 
    private:
-    ValueType getUpperBound(const storm::logic::BoundedUntilFormula& formula, uint64_t i);
-    ValueType getLowerBound(const storm::logic::BoundedUntilFormula& formula, uint64_t i);
-    std::pair<std::unordered_map<std::string, ValueType>, std::unordered_map<std::string, ValueType>> getBounds(const storm::logic::Formula& formula);
+    std::pair<std::unordered_map<std::string, uint64_t>, std::unordered_map<std::string, uint64_t>> getBounds(const storm::logic::Formula& formula);
 };
 
 }  // namespace storm::pomdp::transformer
