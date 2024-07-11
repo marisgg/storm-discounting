@@ -100,11 +100,11 @@ BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::BeliefExploration(
     // Intentionally left empty.
 }
 
-
 template<typename BeliefMdpValueType, typename PomdpType, typename BeliefType>
 void BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::resumeExploration(
     StandardExplorationInformation<BeliefMdpValueType, BeliefType>& info, TerminalBeliefCallback const& terminalBeliefCallback,
-    TerminationCallback const& terminationCallback, storm::OptionalRef<std::string const> rewardModelName, storm::OptionalRef<FreudenthalTriangulationBeliefAbstraction<BeliefType>> abstraction) {
+    TerminationCallback const& terminationCallback, storm::OptionalRef<std::string const> rewardModelName,
+    storm::OptionalRef<FreudenthalTriangulationBeliefAbstraction<BeliefType>> abstraction) {
     if (rewardModelName.has_value()) {
         firstStateNextStateGenerator.setRewardModel(rewardModelName.value());
     }

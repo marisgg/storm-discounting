@@ -34,12 +34,10 @@ typename BeliefExploration<BeliefMdpValueType, PomdpModelType, BeliefType>::Term
             if (options.implicitCutOffs) {
                 return [&info, maxSize = options.maxExplorationSize.value()]() { return info.exploredBeliefs.size() > maxSize; };
             } else {
-                return [&info, maxSize = options.maxExplorationSize.value()]() { return info.discoveredBeliefs.getNumberOfBeliefIds() > maxSize;
-                };
+                return [&info, maxSize = options.maxExplorationSize.value()]() { return info.discoveredBeliefs.getNumberOfBeliefIds() > maxSize; };
             }
         case MAX_EXPLORATION_TIME:
-            return [&swExplore, maxDuration = options.maxExplorationTime.value()]() { return (unsigned)abs(swExplore.getTimeInSeconds()) > maxDuration;
-            };
+            return [&swExplore, maxDuration = options.maxExplorationTime.value()]() { return (unsigned)abs(swExplore.getTimeInSeconds()) > maxDuration; };
         case MAX_EXPLORATION_SIZE_AND_TIME:
             if (options.implicitCutOffs) {
                 return [&info, &swExplore, maxSize = options.maxExplorationSize.value(), maxDuration = options.maxExplorationTime.value()]() {
@@ -69,23 +67,23 @@ typename BeliefExploration<BeliefMdpValueType, PomdpModelType, BeliefType>::Term
             return
                 [&propertyInformation, &valueBounds, maxGapToCut = options.maxGapToCut.value()](BeliefType const& belief) -> std::optional<BeliefMdpValueType> {
                     if (propertyInformation.targetObservations.count(belief.observation()) > 0) {
-                    return storm::utility::zero<BeliefMdpValueType>();
-                } else {
-                    // TODO add scheduler information if requested
-                    auto smallestUpper = storm::utility::infinity<BeliefMdpValueType>();
-                    for (auto const& valueList : valueBounds.upper) {
-                        smallestUpper = std::min(smallestUpper, belief.template getWeightedSum<BeliefMdpValueType>(valueList));
+                        return storm::utility::zero<BeliefMdpValueType>();
+                    } else {
+                        // TODO add scheduler information if requested
+                        auto smallestUpper = storm::utility::infinity<BeliefMdpValueType>();
+                        for (auto const& valueList : valueBounds.upper) {
+                            smallestUpper = std::min(smallestUpper, belief.template getWeightedSum<BeliefMdpValueType>(valueList));
+                        }
+                        BeliefMdpValueType largestLower = -storm::utility::infinity<BeliefMdpValueType>();
+                        for (auto const& valueList : valueBounds.lower) {
+                            largestLower = std::max(largestLower, belief.template getWeightedSum<BeliefMdpValueType>(valueList));
+                        }
+                        if (storm::utility::abs<BeliefMdpValueType>(smallestUpper - largestLower) <= maxGapToCut) {
+                            return propertyInformation.dir == solver::OptimizationDirection::Maximize ? largestLower : smallestUpper;
+                        }
+                        return std::nullopt;
                     }
-                    BeliefMdpValueType largestLower = -storm::utility::infinity<BeliefMdpValueType>();
-                    for (auto const& valueList : valueBounds.lower) {
-                        largestLower = std::max(largestLower, belief.template getWeightedSum<BeliefMdpValueType>(valueList));
-                    }
-                    if (storm::utility::abs<BeliefMdpValueType>(smallestUpper - largestLower) <= maxGapToCut) {
-                        return propertyInformation.dir == solver::OptimizationDirection::Maximize ? largestLower : smallestUpper;
-                    }
-                    return std::nullopt;
-                }
-            };
+                };
         } else {
             return [&propertyInformation](BeliefType const& belief) -> std::optional<BeliefMdpValueType> {
                 if (propertyInformation.targetObservations.count(belief.observation()) > 0) {
@@ -205,7 +203,7 @@ std::pair<BeliefMdpValueType, bool> checkUnfoldOrDiscretize(storm::Environment c
         exploration.resumeExploration(info, terminalBeliefCallback, terminationCallback, storm::NullRef, abstraction);
     }
     swExplore.stop();
-    bool earlyExplorationStop = !info.queue.hasNext();
+    bool earlyExplorationStop = info.queue.hasNext();
     if (earlyExplorationStop) {
         STORM_PRINT_AND_LOG("Exploration stopped before all states were explored.\n");
     }
