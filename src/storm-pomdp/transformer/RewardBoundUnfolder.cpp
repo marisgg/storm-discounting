@@ -1,4 +1,4 @@
-#include "BoundUnfolder.h"
+#include "RewardBoundUnfolder.h"
 
 #include <queue>
 #include "logic/RemoveBoundVisitor.h"
@@ -10,8 +10,8 @@
 
 namespace storm::pomdp::transformer {
 template<typename ValueType>
-typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unfold(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp,
-                                                                                    storm::logic::Formula const& formula, bool rewardAware) {
+typename RewardBoundUnfolder<ValueType>::UnfoldingResult RewardBoundUnfolder<ValueType>::unfold(
+    std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> originalPomdp, storm::logic::Formula const& formula, bool rewardAware) {
     STORM_LOG_ASSERT(originalPomdp->getInitialStates().getNumberOfSetBits() == 1, "Original POMDP has more than one initial state");
 
     // Check formula
@@ -266,7 +266,7 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
 }
 
 template<typename ValueType>
-std::pair<std::unordered_map<std::string, uint64_t>, std::unordered_map<std::string, uint64_t>> BoundUnfolder<ValueType>::getBounds(
+std::pair<std::unordered_map<std::string, uint64_t>, std::unordered_map<std::string, uint64_t>> RewardBoundUnfolder<ValueType>::getBounds(
     const logic::Formula& formula) {
     STORM_LOG_ASSERT(formula.isOperatorFormula() && formula.asOperatorFormula().getSubformula().isBoundedUntilFormula(),
                      "Formula is not the right kind (Operator Formula with one bounded Until subformula)");
@@ -311,6 +311,6 @@ std::pair<std::unordered_map<std::string, uint64_t>, std::unordered_map<std::str
     return std::make_pair(upperBounds, lowerBounds);
 }
 
-template class BoundUnfolder<double>;
-template class BoundUnfolder<storm::RationalNumber>;
+template class RewardBoundUnfolder<double>;
+template class RewardBoundUnfolder<storm::RationalNumber>;
 }  // namespace storm::pomdp::transformer

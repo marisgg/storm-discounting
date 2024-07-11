@@ -8,7 +8,7 @@
 
 namespace storm::pomdp::transformer {
 template<typename ValueType>
-class BoundUnfolder {
+class RewardBoundUnfolder {
    public:
     struct UnfoldingResult {
         std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> pomdp;
@@ -27,7 +27,7 @@ class BoundUnfolder {
               newStateToStateEpoch(std::move(newStateToStateEpochs)) {}
     };
 
-    BoundUnfolder() = default;
+    RewardBoundUnfolder() = default;
 
     /*!
      * Unfolds a pomdp w.r.t. a reward-bounded until formula
