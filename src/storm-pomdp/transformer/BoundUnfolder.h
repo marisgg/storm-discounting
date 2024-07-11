@@ -1,10 +1,9 @@
 #pragma once
 
-#include <logic/TimeBoundType.h>
-
 #include <utility>
 #include "logic/ProbabilityOperatorFormula.h"
 #include "logic/QuantileFormula.h"
+#include "logic/TimeBoundType.h"
 #include "models/sparse/Pomdp.h"
 
 namespace storm::pomdp::transformer {

@@ -1,14 +1,12 @@
 #include "BoundUnfolder.h"
-#include <logic/BoundToUnboundVisitor.h>
+
 #include <queue>
-#include "api/properties.h"
+#include "logic/RemoveBoundVisitor.h"
 #include "logic/UntilFormula.h"
 #include "storage/jani/Property.h"
-#include "storm-parsers/api/properties.h"
 #include "storm-pomdp/analysis/FormulaInformation.h"
 #include "storm/adapters/RationalFunctionAdapter.h"
 #include "storm/exceptions/NotSupportedException.h"
-#include "storm/logic/BoundedUntilFormula.h"
 
 namespace storm::pomdp::transformer {
 template<typename ValueType>
@@ -259,8 +257,8 @@ typename BoundUnfolder<ValueType>::UnfoldingResult BoundUnfolder<ValueType>::unf
     }
 
     // Drop Bounds from Until Formula
-    storm::logic::BoundToUnboundVisitor vis;
-    std::shared_ptr<storm::logic::Formula> newFormula = vis.dropBounds(formula);
+    storm::logic::RemoveBoundVisitor removeBoundVisitor;
+    std::shared_ptr<storm::logic::Formula> newFormula = removeBoundVisitor.dropBounds(formula);
 
     // Put result together
     return UnfoldingResult(std::make_shared<storm::models::sparse::Pomdp<ValueType>>(std::move(unfoldedPomdp)), newFormula, idToEpochMap, stateEpochToNewState,
