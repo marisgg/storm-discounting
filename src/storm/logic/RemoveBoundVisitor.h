@@ -1,15 +1,13 @@
 #pragma once
-#ifndef STORM_LOGIC_BOUNDTOUNBOUNDVISITOR_H_
-#define STORM_LOGIC_BOUNDTOUNBOUNDVISITOR_H_
 
 #include "storm/logic/CloneVisitor.h"
 #include "storm/storage/expressions/Expression.h"
 
 namespace storm::logic {
 
-class BoundToUnboundVisitor : public CloneVisitor {
+class RemoveBoundVisitor : public CloneVisitor {
    public:
-    BoundToUnboundVisitor() = default;
+    RemoveBoundVisitor() = default;
 
     /*!
      * Removes bounds of bounded Untils, leaves everything else as is
@@ -22,5 +20,3 @@ class BoundToUnboundVisitor : public CloneVisitor {
 };
 
 }  // namespace storm::logic
-
-#endif /* STORM_LOGIC_BOUNDTOUNBOUNDVISITOR_H_ */
