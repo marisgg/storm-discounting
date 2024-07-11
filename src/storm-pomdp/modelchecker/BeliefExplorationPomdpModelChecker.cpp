@@ -1232,7 +1232,7 @@ bool BeliefExplorationPomdpModelChecker<PomdpModelType, BeliefValueType, BeliefM
         }
         if (printUpdateStopwatch.getTimeInSeconds() >= 60) {
             printUpdateStopwatch.restart();
-            STORM_PRINT_AND_LOG("# " << underApproximation->getCurrentNumberOfMdpStates() << " beliefs in underapproximation MDP" << " # "
+            STORM_PRINT_AND_LOG("# " << underApproximation->getCurrentNumberOfMdpStates() << " beliefs in underapproximation MDP # "
                                      << underApproximation->getUnexploredStates().size() << " beliefs queued\n");
             if (underApproximation->getCurrentNumberOfMdpStates() > heuristicParameters.sizeThreshold && options.useClipping) {
                 STORM_PRINT_AND_LOG("# Clipping Attempts: " << statistics.nrClippingAttempts.value() << " # "
