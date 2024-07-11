@@ -412,6 +412,7 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
     if (formula) {
         if (formula->asOperatorFormula().getSubformula().isBoundedUntilFormula() && pomdpSettings.isBoundedToUnboundedReachabilityTransformationSet()) {
             STORM_PRINT_AND_LOG("Perform explicit unfolding of reward bounds.\n");
+            storm::utility::Stopwatch unfoldingWatch(true);
             transformer::BoundUnfolder<ValueType> boundUnfolder;
             typename transformer::BoundUnfolder<ValueType>::UnfoldingResult unfoldingResult =
                 boundUnfolder.unfold(pomdp, *formula, pomdpSettings.isRewardObservableSet());
@@ -420,6 +421,8 @@ void processOptionsWithValueTypeAndDdLib(storm::cli::SymbolicInput const& symbol
             STORM_PRINT_AND_LOG("Unfolding POMDP Information:\n");
             pomdp->printModelInformationToStream(std::cout);
             STORM_PRINT_AND_LOG("Transformed formula: " << *formula << "\n");
+            unfoldingWatch.stop();
+            STORM_PRINT_AND_LOG("Time for explicit reward bound unfolding: " << unfoldingWatch << ".\n");
         }
         auto formulaInfo = storm::pomdp::analysis::getFormulaInformation(*pomdp, *formula);
         STORM_LOG_THROW(!formulaInfo.isUnsupported(), storm::exceptions::InvalidPropertyException,

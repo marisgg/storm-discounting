@@ -179,7 +179,7 @@ std::pair<BeliefMdpValueType, bool> checkUnfoldOrDiscretize(storm::Environment c
                          propertyInformation.kind == PropertyInformation::Kind::ExpectedTotalReachabilityReward,
                      "Unexpected kind of property.");
 
-    STORM_PRINT_AND_LOG("Constructing the belief MDP...\n");
+    STORM_PRINT_AND_LOG("Exploring the belief space...\n");
 
     // First, explore the beliefs and its successors
     using BeliefExplorationType = BeliefExploration<BeliefMdpValueType, PomdpModelType, BeliefType>;
@@ -208,6 +208,7 @@ std::pair<BeliefMdpValueType, bool> checkUnfoldOrDiscretize(storm::Environment c
     }
 
     // Second, build the Belief MDP from the exploration information
+    STORM_PRINT_AND_LOG("Constructing the belief MDP...\n");
     storm::utility::Stopwatch swBuild(true);
     std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> beliefMdp =
         buildBeliefMdpFromInfo<BeliefType, BeliefMdpValueType, InfoType>(propertyInformation, options, valueBounds, info);
@@ -240,7 +241,7 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
     STORM_LOG_ASSERT(propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability, "Unexpected kind of property.");
     STORM_LOG_ASSERT(rewardSplitter.getNumberOfSetRewardModels() != 0, "rewardSplitter must have a reward model set for reward-aware belief MDP construction.");
 
-    STORM_PRINT_AND_LOG("Constructing the belief MDP...\n");
+    STORM_PRINT_AND_LOG("Exploring the belief space...\n");
 
     // First, explore the beliefs and its successors
     using BeliefExplorationType = BeliefExploration<BeliefMdpValueType, PomdpModelType, BeliefType>;
@@ -265,6 +266,7 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
     }
 
     // Second, build the Belief MDP from the exploration information
+    STORM_PRINT_AND_LOG("Constructing the belief MDP...\n");
     storm::utility::Stopwatch swBuild(true);
     std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> beliefMdp =
         buildBeliefMdpFromInfo<BeliefType, BeliefMdpValueType, InfoType>(propertyInformation, options, valueBounds, info);
