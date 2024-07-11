@@ -130,14 +130,14 @@ struct NextStateGeneratorHandle {
         if constexpr (isNoAbstraction<PreAbstractionType>) {
             computeSuccessorBeliefs(belief, localActionIndex, storm::utility::one<BeliefValueType>(), DefaultActionObservation, additionalCallbackArgs...);
         } else {
-            preAbstraction.abstract(belief, localActionIndex,
-                                    [this, &localActionIndex, &additionalCallbackArgs...](BeliefType&& preBel, BeliefValueType&& preVal,
-                                                                                          BeliefActionObservationType actionObservation,
-                                                                                          auto const&... additionalPreAbstractionArgs) {
+            preAbstraction.abstract(
+                belief, localActionIndex,
+                [this, &localActionIndex, &additionalCallbackArgs...](
+                    BeliefType&& preBel, BeliefValueType&& preVal, BeliefActionObservationType actionObservation, auto const&... additionalPreAbstractionArgs) {
                     computeSuccessorBeliefs(preBel, localActionIndex, std::move(preVal), actionObservation,
                                             std::forward<CallBackArgs const>(additionalCallbackArgs)...,
-                                                                std::forward<decltype(additionalPreAbstractionArgs)>(additionalPreAbstractionArgs)...);
-                                    });
+                                            std::forward<decltype(additionalPreAbstractionArgs)>(additionalPreAbstractionArgs)...);
+                });
         }
     }
 
