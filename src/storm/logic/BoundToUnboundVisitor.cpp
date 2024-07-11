@@ -4,8 +4,7 @@
 
 #include "storm/logic/Formulas.h"
 
-namespace storm {
-namespace logic {
+namespace storm::logic {
 
 std::shared_ptr<Formula> BoundToUnboundVisitor::dropBounds(const storm::logic::Formula& f) const {
     boost::any result = f.accept(*this, boost::any());
@@ -15,9 +14,7 @@ std::shared_ptr<Formula> BoundToUnboundVisitor::dropBounds(const storm::logic::F
 boost::any BoundToUnboundVisitor::visit(BoundedUntilFormula const& f, boost::any const&) const {
     STORM_LOG_ASSERT(!f.hasMultiDimensionalSubformulas(), "Cannot turn a bounded Until formula into an unbounded one if it has multidimensional subformulas!");
     auto left = boost::any_cast<std::shared_ptr<Formula>>(f.getLeftSubformula().accept(*this));
-    //auto right = boost::any_cast<std::shared_ptr<Formula>>(std::make_shared<AtomicLabelFormula>("goal"));
     return std::static_pointer_cast<Formula>(std::make_shared<UntilFormula>(left, std::make_shared<AtomicLabelFormula>("goal")));
 }
 
-}  // namespace logic
-}  // namespace storm
+}  // namespace storm::logic

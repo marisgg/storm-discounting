@@ -5,8 +5,7 @@
 #include "storm/logic/CloneVisitor.h"
 #include "storm/storage/expressions/Expression.h"
 
-namespace storm {
-namespace logic {
+namespace storm::logic {
 
 class BoundToUnboundVisitor : public CloneVisitor {
    public:
@@ -22,7 +21,6 @@ class BoundToUnboundVisitor : public CloneVisitor {
     virtual boost::any visit(BoundedUntilFormula const& f, boost::any const& data) const override;
 };
 
-}  // namespace logic
-}  // namespace storm
+}  // namespace storm::logic
 
 #endif /* STORM_LOGIC_BOUNDTOUNBOUNDVISITOR_H_ */
