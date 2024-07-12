@@ -134,9 +134,9 @@ struct NextStateGeneratorHandle {
                 belief, localActionIndex,
                 [this, &localActionIndex, &additionalCallbackArgs...](
                     BeliefType&& preBel, BeliefValueType&& preVal, BeliefActionObservationType actionObservation, auto const&... additionalPreAbstractionArgs) {
-                    computeSuccessorBeliefs(preBel, localActionIndex, std::move(preVal), actionObservation,
-                                            std::forward<CallBackArgs const>(additionalCallbackArgs)...,
-                                            std::forward<decltype(additionalPreAbstractionArgs)>(additionalPreAbstractionArgs)...);
+                    this->computeSuccessorBeliefs(preBel, localActionIndex, std::move(preVal), actionObservation,
+                                                  std::forward<CallBackArgs const>(additionalCallbackArgs)...,
+                                                  std::forward<decltype(additionalPreAbstractionArgs)>(additionalPreAbstractionArgs)...);
                 });
         }
     }
