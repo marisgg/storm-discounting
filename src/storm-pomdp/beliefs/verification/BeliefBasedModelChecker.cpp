@@ -277,8 +277,9 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
     beliefMdp->printModelInformationToStream(std::cout);
 
     // Finally, perform model checking on the belief MDP.
-    storm::utility::Stopwatch swCheck(true);
     auto formula = createFormulaForBeliefMdp(propertyInformation);
+    STORM_PRINT_AND_LOG("Analyzing property '" << *formula << "' on the belief MDP...\n");
+    storm::utility::Stopwatch swCheck(true);
     std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> processedMdp = beliefMdp;
     if (propertyInformation.kind == PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
         std::vector<std::string> rewardModelNames;
@@ -287,6 +288,9 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
         }
         processedMdp = storm::transformer::transformTransitionToActionRewards<BeliefMdpValueType>(beliefMdp, rewardModelNames)
                            .model->template as<storm::models::sparse::Mdp<BeliefMdpValueType>>();
+        double increase = (double)processedMdp->getNumberOfStates() / (double)beliefMdp->getNumberOfStates();
+        STORM_PRINT_AND_LOG("Elimination of transition rewards resulted in a model with " << processedMdp->getNumberOfStates() << " states. " << increase
+                                                                                          << " times more states than the original belief MDP.\n");
     }
     storm::modelchecker::CheckTask<storm::logic::Formula, BeliefMdpValueType> task(*formula, true);
     std::unique_ptr<storm::modelchecker::CheckResult> res(storm::api::verifyWithSparseEngine<BeliefMdpValueType>(env, processedMdp, task));
