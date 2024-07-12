@@ -203,9 +203,10 @@ std::pair<BeliefMdpValueType, bool> checkUnfoldOrDiscretize(storm::Environment c
         exploration.resumeExploration(info, terminalBeliefCallback, terminationCallback, storm::NullRef, abstraction);
     }
     swExplore.stop();
-    bool earlyExplorationStop = info.queue.hasNext();
+    bool const earlyExplorationStop = info.queue.hasNext();
     if (earlyExplorationStop) {
-        STORM_PRINT_AND_LOG("Exploration stopped before all states were explored.\n");
+        STORM_PRINT_AND_LOG("Exploration stopped before all beliefs were explored. " << info.discoveredBeliefs.getNumberOfBeliefIds() << " beliefs discovered. "
+                                                                                     << info.exploredBeliefs.size() << " beliefs explored.\n");
     }
 
     // Second, build the Belief MDP from the exploration information
@@ -263,7 +264,8 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
     swExplore.stop();
     bool const earlyExplorationStop = info.queue.hasNext();
     if (earlyExplorationStop) {
-        STORM_PRINT_AND_LOG("Exploration stopped before all states were explored.\n");
+        STORM_PRINT_AND_LOG("Exploration stopped before all beliefs were explored. " << info.discoveredBeliefs.getNumberOfBeliefIds() << " beliefs discovered. "
+                                                                                     << info.exploredBeliefs.size() << " beliefs explored.\n");
     }
 
     // Second, build the Belief MDP from the exploration information
