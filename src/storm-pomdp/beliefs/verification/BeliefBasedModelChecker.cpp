@@ -318,9 +318,8 @@ std::pair<BeliefMdpValueType, bool> BeliefBasedModelChecker<PomdpModelType, Beli
     storm::Environment const& env, PropertyInformation const& propertyInformation,
     storm::pomdp::beliefs::BeliefBasedModelCheckerOptions<BeliefMdpValueType> const& options, uint64_t resolution, bool useDynamic,
     storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds) {
-    std::vector<BeliefValueType> observationResolutionVector(inputPomdp.getNrObservations(), storm::utility::convertNumber<BeliefValueType>(resolution));
     auto mode = useDynamic ? FreudenthalTriangulationMode::Dynamic : FreudenthalTriangulationMode::Static;
-    FreudenthalTriangulationBeliefAbstraction<Belief<BeliefValueType>> abstraction(observationResolutionVector, mode);
+    FreudenthalTriangulationBeliefAbstraction<Belief<BeliefValueType>> abstraction(storm::utility::convertNumber<BeliefValueType>(resolution), mode);
     return checkUnfoldOrDiscretize<PomdpModelType, Belief<BeliefValueType>, BeliefMdpValueType>(env, inputPomdp, propertyInformation, options, valueBounds,
                                                                                                 abstraction);
 }
@@ -345,9 +344,8 @@ std::pair<BeliefMdpValueType, bool> BeliefBasedModelChecker<PomdpModelType, Beli
     storm::Environment const& env, PropertyInformation const& propertyInformation,
     storm::pomdp::beliefs::BeliefBasedModelCheckerOptions<BeliefMdpValueType> const& options, uint64_t resolution, bool useDynamic,
     storm::pomdp::storage::PreprocessingPomdpValueBounds<BeliefMdpValueType> const& valueBounds, std::vector<std::string> const& relevantRewardModelNames) {
-    std::vector<BeliefValueType> observationResolutionVector(inputPomdp.getNrObservations(), storm::utility::convertNumber<BeliefValueType>(resolution));
     auto mode = useDynamic ? FreudenthalTriangulationMode::Dynamic : FreudenthalTriangulationMode::Static;
-    FreudenthalTriangulationBeliefAbstraction<Belief<BeliefValueType>> abstraction(observationResolutionVector, mode);
+    FreudenthalTriangulationBeliefAbstraction<Belief<BeliefValueType>> abstraction(storm::utility::convertNumber<BeliefValueType>(resolution), mode);
     RewardBoundedBeliefSplitter<BeliefMdpValueType, PomdpModelType, Belief<BeliefValueType>> rewardBoundedBeliefSplitter(inputPomdp);
     if (relevantRewardModelNames.empty()) {
         rewardBoundedBeliefSplitter.setRewardModel();

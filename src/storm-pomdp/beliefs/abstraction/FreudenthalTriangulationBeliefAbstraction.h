@@ -28,7 +28,7 @@ class FreudenthalTriangulationBeliefAbstraction {
    public:
     using BeliefValueType = typename BeliefType::ValueType;
 
-    FreudenthalTriangulationBeliefAbstraction(std::vector<BeliefValueType> const& observationTriangulationResolutions, FreudenthalTriangulationMode mode);
+    FreudenthalTriangulationBeliefAbstraction(BeliefValueType const& initialResolution, FreudenthalTriangulationMode mode);
 
     template<typename AbstractCallback>
     void abstract(BeliefType&& belief, BeliefValueType&& probabilityFactor, AbstractCallback const& callback) const {
@@ -36,12 +36,15 @@ class FreudenthalTriangulationBeliefAbstraction {
         if (belief.size() == 1u) {
             callback(std::move(belief), std::move(probabilityFactor));
         } else {
+            auto observationResolutionFindRes = observationResolutions.find(belief.observation());
+            auto observationResolution =
+                observationResolutionFindRes != observationResolutions.end() ? observationResolutionFindRes->second : defaultResolution;
             switch (mode) {
                 case FreudenthalTriangulationMode::Static:
-                    abstractStatic(probabilityFactor, belief, callback, observationResolutions[belief.observation()]);
+                    abstractStatic(probabilityFactor, belief, callback, observationResolution);
                     break;
                 case FreudenthalTriangulationMode::Dynamic:
-                    abstractDynamic(probabilityFactor, belief, callback);
+                    abstractDynamic(probabilityFactor, belief, callback, observationResolution);
                     break;
                 default:
                     STORM_LOG_ASSERT(false, "Invalid triangulation mode.");
@@ -119,39 +122,40 @@ class FreudenthalTriangulationBeliefAbstraction {
     }
 
     template<typename AbstractCallback>
-    void abstractDynamic(BeliefValueType const& probabilityFactor, BeliefType const& belief, AbstractCallback& callback) const {
+    void abstractDynamic(BeliefValueType const& probabilityFactor, BeliefType const& belief, AbstractCallback& callback,
+                         BeliefValueType const& maxResolution) const {
         // Find the best resolution for this belief, i.e., N such that the largest distance between one of the belief values to a value in {i/N | 0 ≤ i ≤ N} is
         // minimal
-        auto const resolution = observationResolutions[belief.observation()];
-        STORM_LOG_ASSERT(storm::utility::isInteger(resolution), "Expected an integer resolution");
-        BeliefValueType const halfResolution = resolution / storm::utility::convertNumber<BeliefValueType, uint64_t>(2);
-        BeliefValueType const initialDist = storm::utility::one<BeliefValueType>() / resolution;
-        // We take 1/resolution as initial distance. This means that coarser resolutions are only chosen if they are clearly better suited for the given
+        STORM_LOG_ASSERT(storm::utility::isInteger(maxResolution), "Expected an integer resolution");
+        BeliefValueType const halfResolution = maxResolution / storm::utility::convertNumber<BeliefValueType, uint64_t>(2);
+        BeliefValueType const initialDist = storm::utility::one<BeliefValueType>() / maxResolution;
+        // We take 1/maxResolution as initial distance. This means that coarser maxResolution are only chosen if they are clearly better suited for the given
         // belief.
 
-        BeliefValueType finalResolution = resolution;
-        BeliefValueType finalResolutionDist = initialDist;
+        BeliefValueType resolution = maxResolution;
+        BeliefValueType resolutionDist = initialDist;
         // We don't need to check resolutions that are smaller than the maximal resolution divided by 2 as we already checked multiples of these
-        for (BeliefValueType currResolution = resolution; currResolution > halfResolution; --currResolution) {
+        for (BeliefValueType currResolution = maxResolution; currResolution > halfResolution; --currResolution) {
             BeliefValueType currDist = storm::utility::zero<BeliefValueType>();
-            bool const newBest = belief.allOf([&currDist, &currResolution, &finalResolutionDist](BeliefStateType const&, BeliefValueType const& val) {
+            bool const newBest = belief.allOf([&currDist, &currResolution, &resolutionDist](BeliefStateType const&, BeliefValueType const& val) {
                 currDist += storm::utility::abs<BeliefValueType>(val - storm::utility::round<BeliefValueType>(val * currResolution) / currResolution);
-                return currDist <= finalResolutionDist;  // continue as long as the current dist is still smaller than the smallest dist
+                return currDist <= resolutionDist;  // continue as long as the current dist is still smaller than the smallest dist
             });
             if (newBest) {
-                STORM_LOG_ASSERT(currDist <= finalResolutionDist, "Expected a smaller resolution");
-                finalResolution = currResolution;
-                finalResolutionDist = currDist;
-                if (BeliefNumerics<BeliefValueType>::isZero(finalResolutionDist)) {
+                STORM_LOG_ASSERT(currDist <= resolutionDist, "Expected a smaller resolution");
+                resolution = currResolution;
+                resolutionDist = currDist;
+                if (BeliefNumerics<BeliefValueType>::isZero(resolutionDist)) {
                     break;
                 }
             }
         }
-        abstractStatic(probabilityFactor, belief, callback, finalResolution);
+        abstractStatic(probabilityFactor, belief, callback, resolution);
     }
 
    private:
-    std::vector<BeliefValueType> observationResolutions;
+    BeliefValueType const defaultResolution;
     FreudenthalTriangulationMode const mode;
+    std::map<BeliefObservationType, BeliefValueType> observationResolutions;
 };
 }  // namespace storm::pomdp::beliefs

@@ -5,14 +5,11 @@
 namespace storm::pomdp::beliefs {
 
 template<typename BeliefType>
-FreudenthalTriangulationBeliefAbstraction<BeliefType>::FreudenthalTriangulationBeliefAbstraction(
-    std::vector<BeliefValueType> const& observationTriangulationResolutions, FreudenthalTriangulationMode mode)
-    : mode(mode) {
-    observationResolutions.reserve(observationResolutions.size());
-    for (auto const& res : observationTriangulationResolutions) {
-        observationResolutions.emplace_back(storm::utility::ceil<BeliefValueType>(res));
-        STORM_LOG_ASSERT(observationResolutions.back() > 0, "Expected that the resolution is a positive integer. Got " << res << " instead.");
-    }
+FreudenthalTriangulationBeliefAbstraction<BeliefType>::FreudenthalTriangulationBeliefAbstraction(BeliefValueType const& initialResolution,
+                                                                                                 FreudenthalTriangulationMode mode)
+    : defaultResolution(storm::utility::ceil<BeliefValueType>(initialResolution)), mode(mode) {
+    STORM_LOG_ASSERT(defaultResolution > storm::utility::zero<BeliefValueType>(),
+                     "Expected that the resolution is a positive integer. Got " << defaultResolution << " instead.");
 }
 
 template class FreudenthalTriangulationBeliefAbstraction<Belief<double>>;
