@@ -282,7 +282,9 @@ std::shared_ptr<storm::models::sparse::Mdp<BeliefMdpValueType>> buildBeliefMdp(
                 transitionBuilder.addNextValue(choice, bottomState, storm::utility::one<BeliefMdpValueType>() - entry.second);
             } else {
                 transitionBuilder.addNextValue(choice, bottomState, storm::utility::one<BeliefMdpValueType>());
-                actionRewards[choice] += entry.second;
+                if (isTotRew) {
+                    actionRewards[choice] += entry.second;
+                }
             }
             // TODO add labeling information
             ++choice;
