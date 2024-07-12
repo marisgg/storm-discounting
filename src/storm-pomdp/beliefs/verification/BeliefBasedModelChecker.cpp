@@ -261,7 +261,7 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
 
     exploration.resumeRewardAwareExploration(info, terminalBeliefCallback, terminationCallback, rewardSplitter, abstraction);
     swExplore.stop();
-    bool earlyExplorationStop = !info.queue.hasNext();
+    bool const earlyExplorationStop = info.queue.hasNext();
     if (earlyExplorationStop) {
         STORM_PRINT_AND_LOG("Exploration stopped before all states were explored.\n");
     }
