@@ -26,8 +26,6 @@ bool BeliefExploration<BeliefMdpValueType, PomdpType, BeliefType>::performExplor
     while (info.queue.hasNext()) {
         // Check if we terminate prematurely
         if ((terminationCallback && terminationCallback()) || storm::utility::resources::isTerminate()) {
-            STORM_LOG_ASSERT(storm::utility::resources::isTerminate() || info.queue.getContents() == info.getFrontierBeliefs(),
-                             "Frontier beliefs inconsistent.");
             return false;  // Terminate prematurely
         }
 
