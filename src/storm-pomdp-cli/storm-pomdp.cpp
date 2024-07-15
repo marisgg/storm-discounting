@@ -276,11 +276,15 @@ bool performAnalysis(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> co
     }
     if (pomdpSettings.isCheckFullyObservableSet()) {
         STORM_PRINT_AND_LOG("Analyzing the formula on the fully observable MDP ... ");
-        auto resultPtr = storm::api::verifyWithSparseEngine<ValueType>(pomdp->template as<storm::models::sparse::Mdp<ValueType>>(),
-                                                                       storm::api::createTask<ValueType>(formula.asSharedPointer(), true));
+        auto mdp = std::make_shared<storm::models::sparse::Mdp<ValueType>>(std::move(pomdp->getTransitionMatrix()), std::move(pomdp->getStateLabeling()),
+                                                                           std::move(pomdp->getRewardModels()));
+        mdp->getOptionalStateValuations() = std::move(pomdp->getOptionalStateValuations());
+        mdp->getOptionalChoiceLabeling() = std::move(pomdp->getOptionalChoiceLabeling());
+        mdp->getOptionalChoiceOrigins() = std::move(pomdp->getOptionalChoiceOrigins());
+        auto resultPtr = storm::api::verifyWithSparseEngine<ValueType>(mdp, storm::api::createTask<ValueType>(formula.asSharedPointer(), true));
         if (resultPtr) {
             auto result = resultPtr->template asExplicitQuantitativeCheckResult<ValueType>();
-            result.filter(storm::modelchecker::ExplicitQualitativeCheckResult(pomdp->getInitialStates()));
+            result.filter(storm::modelchecker::ExplicitQualitativeCheckResult(mdp->getInitialStates()));
             if (storm::utility::resources::isTerminate()) {
                 STORM_PRINT_AND_LOG("\nResult till abort: ");
             } else {
@@ -291,6 +295,12 @@ bool performAnalysis(std::shared_ptr<storm::models::sparse::Pomdp<ValueType>> co
         } else {
             STORM_PRINT_AND_LOG("\nResult: Not available.\n");
         }
+        pomdp->getTransitionMatrix() = std::move(mdp->getTransitionMatrix());
+        pomdp->getStateLabeling() = std::move(mdp->getStateLabeling());
+        pomdp->getRewardModels() = std::move(mdp->getRewardModels());
+        pomdp->getOptionalStateValuations() = std::move(mdp->getOptionalStateValuations());
+        pomdp->getOptionalChoiceLabeling() = std::move(mdp->getOptionalChoiceLabeling());
+        pomdp->getOptionalChoiceOrigins() = std::move(mdp->getOptionalChoiceOrigins());
         analysisPerformed = true;
     }
     return analysisPerformed;
