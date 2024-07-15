@@ -539,6 +539,9 @@ std::shared_ptr<storm::models::sparse::Model<ValueType, RewardModelType>> Sparse
         }
         components.markovianStates = std::move(resultMarkovianStates);
         components.exitRates = std::move(resultExitRates);
+    } else {
+        STORM_LOG_ASSERT(model.isOfType(storm::models::ModelType::Dtmc) || model.isOfType(storm::models::ModelType::Mdp),
+                         "Unhandled model type " << model.getType());
     }
 
     return storm::utility::builder::buildModelFromComponents(model.getType(), std::move(components));
