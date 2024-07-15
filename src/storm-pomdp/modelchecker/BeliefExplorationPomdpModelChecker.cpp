@@ -227,7 +227,7 @@ storm::pomdp::storage::BeliefExplorationResult<BeliefMDPType> BeliefExplorationP
             }
 
             if (propertyInfo.kind == beliefs::PropertyInformation::Kind::RewardBoundedReachabilityProbability) {
-                std::vector<std::string> relevantRewardModelNames(propertyInfo.rewardBounds.size());
+                std::vector<std::string> relevantRewardModelNames;
                 for (auto const& rewardBound : propertyInfo.rewardBounds) {
                     relevantRewardModelNames.push_back(rewardBound.rewardModelName);
                 }
