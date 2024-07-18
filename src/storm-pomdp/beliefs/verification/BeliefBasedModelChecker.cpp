@@ -13,10 +13,12 @@
 #include "storm/api/verification.h"
 #include "storm/modelchecker/results/ExplicitQuantitativeCheckResult.h"
 #include "storm/models/sparse/Pomdp.h"
+#include "storm/transformer/GoalStateMerger.h"
 #include "storm/transformer/TransitionToActionRewardTransformer.h"
 #include "storm/utility/OptionalRef.h"
 #include "storm/utility/Stopwatch.h"
 #include "storm/utility/constants.h"
+#include "storm/utility/graph.h"
 #include "storm/utility/macros.h"
 
 namespace storm::pomdp::beliefs {
@@ -286,11 +288,27 @@ std::pair<BeliefMdpValueType, bool> checkRewardAwareUnfoldOrDiscretize(
         for (auto const& bnd : propertyInformation.rewardBounds) {
             rewardModelNames.push_back(bnd.rewardModelName);
         }
-        processedMdp = storm::transformer::transformTransitionToActionRewards<BeliefMdpValueType>(beliefMdp, rewardModelNames)
+        processedMdp = storm::transformer::transformTransitionToActionRewards<BeliefMdpValueType>(processedMdp, rewardModelNames)
                            .model->template as<storm::models::sparse::Mdp<BeliefMdpValueType>>();
         double increase = (double)processedMdp->getNumberOfStates() / (double)beliefMdp->getNumberOfStates();
-        STORM_PRINT_AND_LOG("Elimination of transition rewards resulted in a model with " << processedMdp->getNumberOfStates() << " states. " << increase
-                                                                                          << " times more states than the original belief MDP.\n");
+        STORM_PRINT_AND_LOG("Transformation of transition rewards resulted in a model with " << processedMdp->getNumberOfStates() << " states. " << increase
+                                                                                             << " times more states than the original belief MDP.\n");
+
+        // Cut away states that can not reach the target
+        auto targetStates = processedMdp->getStateLabeling().getStates("target");
+        storm::storage::BitVector allStates(targetStates.size(), true);
+        storm::storage::BitVector probGreaterZeroStates;
+        if (storm::solver::maximize(propertyInformation.dir)) {
+            probGreaterZeroStates = storm::utility::graph::performProbGreater0E(processedMdp->getBackwardTransitions(), allStates, targetStates);
+        } else {
+            probGreaterZeroStates =
+                storm::utility::graph::performProbGreater0A(processedMdp->getTransitionMatrix(), processedMdp->getTransitionMatrix().getRowGroupIndices(),
+                                                            processedMdp->getBackwardTransitions(), allStates, targetStates);
+        }
+        auto mergingResult = storm::transformer::GoalStateMerger(*processedMdp)
+                                 .mergeTargetAndSinkStates(probGreaterZeroStates, ~probGreaterZeroStates, ~allStates, rewardModelNames);
+        processedMdp = mergingResult.model;
+        STORM_PRINT_AND_LOG("Merging of sink states resulted in a model with " << processedMdp->getNumberOfStates() << " states.\n");
     }
     storm::modelchecker::CheckTask<storm::logic::Formula, BeliefMdpValueType> task(*formula, true);
     std::unique_ptr<storm::modelchecker::CheckResult> res(storm::api::verifyWithSparseEngine<BeliefMdpValueType>(env, processedMdp, task));
