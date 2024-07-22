@@ -16,7 +16,7 @@ class DiscountedVIOperatorBackend {
         // Intentionally left empty
         auto upper = storm::utility::log<ValueType>((2 * maximalAbsoluteReward) / (precision * (1 - discountFactor)));
         maxIterations = storm::utility::convertNumber<uint64_t>(storm::utility::ceil<ValueType>(upper / -storm::utility::log(discountFactor)));
-        STORM_PRINT("Max Iterations: " << maxIterations << "\n");
+	// STORM_PRINT("Max Iterations: " << maxIterations << "\n");
     }
 
     void startNewIteration() {
